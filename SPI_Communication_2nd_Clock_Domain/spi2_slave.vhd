@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- File: spi_slave.vhd
+-- File: spi2_slave.vhd
 --
 -- !THIS FILE IS UNDER REVISION CONTROL!
 --
@@ -22,13 +22,13 @@ library basic;
   use basic.basic_elements.all;
 library sync;
   use sync.sync_elements.all;
-library spi;
-  use spi.spi_elements.all;
+library spi2;
+  use spi2.spi2_elements.all;
 
 --------------------------------------------------------------------------------
 -- ENTITY definition
 --------------------------------------------------------------------------------
-entity spi_slave is
+entity spi2_slave is
   generic (
     SPI_MSG_LEN    : natural          := 6;                         -- SPI message length (number in bits)
     SPI_CTRL_MODE  : spi_ctrl_mode_t  := CPOL0_CPHA0;               -- SPI control mode
@@ -45,23 +45,23 @@ entity spi_slave is
   );
   port (
     -- Input ports -------------------------------------------------------------
-    i_sys          : in  sys_ctrl_t;                                -- System control
-    i_csel_na      : in  std_logic;                                 -- SPI chip select (low-active, asynchronous)
-    i_sclk_a       : in  std_logic;                                 -- SPI clock (asynchronous)
-    i_sdi_a        : in  std_logic;                                 -- Serial input data (asynchronous)
+    i_res_na       : in  sys_ctrl_t;                                -- Reset control
+    i_csel_2c_n    : in  std_logic;                                 -- SPI chip select (low-active, synchronous to 2nd clock domain [sclk_2c])
+    i_sclk_2c      : in  std_logic;                                 -- SPI clock (2nd clock domain)
+    i_sdi_2c       : in  std_logic;                                 -- Serial input data (synchronous to 2nd clock domain [sclk_2c])
     i_mdo_load_s   : in  std_logic;                                 -- Parallel output message load strobe (RAM=>SPI) (one clock cycle pulse)
     i_mdo_data     : in  std_logic_vector(SPI_MSG_LEN-1 downto 0);  -- Parallel output message data (RAM=>SPI)
     -- Output ports ------------------------------------------------------------
-    o_sdo_t        : out std_logic;                                 -- Serial output data (tristate)
+    o_sdo_2c_t     : out std_logic;                                 -- Serial output data (tristate, synchronous to 2nd clock domain [sclk_2c])
     o_mdi_load_s   : out std_logic;                                 -- Parallel input message load strobe (SPI=>RAM) (one clock cycle pulse)
     o_mdi_data     : out std_logic_vector(SPI_MSG_LEN-1 downto 0)   -- Parallel input message data (SPI=>RAM)
   );
-end entity spi_slave;
+end entity spi2_slave;
 
 --------------------------------------------------------------------------------
 -- ARCHITECTURE definition
 --------------------------------------------------------------------------------
-architecture structural of spi_slave is
+architecture structural of spi2_slave is
   -- Constants -----------------------------------------------------------------
   constant C_SPI_SLAVE_GUARD_LEN   : natural   := 1;                              -- SPI IO synchronization guard length
   constant C_SPI_SLAVE_CSEL_N_INIT : std_logic := '1';                            -- SPI chip select (low-active) initial value
@@ -83,38 +83,6 @@ begin
 
 -- Assertions ------------------------------------------------------------------
 -- (none)
-
---------------------------------------------------------------------------------
--- SPI asynchronous external input signal synchronization
---------------------------------------------------------------------------------
-
--- Input logic -----------------------------------------------------------------
--- (none)
-
--- Component instantiation -----------------------------------------------------
-spi_io_sync_unit: spi_io_sync
-  generic map (
-    SPI_GUARD_LEN   => C_SPI_SLAVE_GUARD_LEN,
-    SPI_CSEL_N_INIT => C_SPI_SLAVE_CSEL_N_INIT,
-    SPI_SCLK_INIT   => C_SPI_SLAVE_SCLK_INIT,
-    SPI_SDI_INIT    => C_SPI_SLAVE_SDI_INIT
-    )
-  port map (
-    -- Input ports -------------------------------------------------------------
-    i_rst           => i_sys.rst,
-    i_clk           => i_sys.clk,
-    i_csel_na       => i_csel_na,
-    i_sclk_a        => i_sclk_a,
-    i_sdi_a         => i_sdi_a,
-    -- Output ports ------------------------------------------------------------
-    o_csel_n        => csel_n,
-    o_sclk          => sclk,
-    o_sdi           => sdi
-  );
-
--- Output logic ----------------------------------------------------------------
-proc_out_csel:
-csel <= not(csel_n);
 
 --------------------------------------------------------------------------------
 -- SPI engine
@@ -163,5 +131,37 @@ spi_engine_unit: spi_engine
 proc_out_o_sdo_t:
 o_sdo_t <= sdo when (csel = '1')
       else 'Z';
+
+--------------------------------------------------------------------------------
+-- SPI asynchronous external input signal synchronization
+--------------------------------------------------------------------------------
+
+-- Input logic -----------------------------------------------------------------
+-- (none)
+
+-- Component instantiation -----------------------------------------------------
+spi_io_sync_unit: spi_io_sync
+  generic map (
+    SPI_GUARD_LEN   => C_SPI_SLAVE_GUARD_LEN,
+    SPI_CSEL_N_INIT => C_SPI_SLAVE_CSEL_N_INIT,
+    SPI_SCLK_INIT   => C_SPI_SLAVE_SCLK_INIT,
+    SPI_SDI_INIT    => C_SPI_SLAVE_SDI_INIT
+    )
+  port map (
+    -- Input ports -------------------------------------------------------------
+    i_rst           => i_sys.rst,
+    i_clk           => i_sys.clk,
+    i_csel_na       => i_csel_na,
+    i_sclk_a        => i_sclk_a,
+    i_sdi_a         => i_sdi_a,
+    -- Output ports ------------------------------------------------------------
+    o_csel_n        => csel_n,
+    o_sclk          => sclk,
+    o_sdi           => sdi
+  );
+
+-- Output logic ----------------------------------------------------------------
+proc_out_csel:
+csel <= not(csel_n);
 
 end architecture structural;

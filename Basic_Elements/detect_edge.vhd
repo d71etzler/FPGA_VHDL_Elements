@@ -48,9 +48,9 @@ architecture rtl of detect_edge is
     dir : edge_dir_t
     ) return std_logic_vector is
     -- Constants ---------------------------------------------------------------
-    -- (none)
+    constant init_vector : std_logic_vector(LEN-1 downto 0) := (0 => '0', others => '1');
     -- Variables ---------------------------------------------------------------
-    variable init_vector : std_logic_vector(LEN-1 downto 0) := (0 => '0', others => '1');
+    -- (none)
   begin
     case dir is
       when RISE =>

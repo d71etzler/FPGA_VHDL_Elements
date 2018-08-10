@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- File: rom_block.vhd
+-- File: count_mod_m_init_clr.vhd
 --
 -- !THIS FILE IS UNDER REVISION CONTROL!
 --
@@ -8,9 +8,7 @@
 -- $Rev:: 44           $: Revision of last commit
 --
 -- Open Points/Remarks:
---  + Non-standard port interface and register implementation to allow an
---    optimized Xilinx RAM block implementation (e.g. use of the intrinsic RAM
---    output register)
+--  + (none)
 --
 --------------------------------------------------------------------------------
 
@@ -20,69 +18,48 @@
 library ieee;
   use ieee.numeric_std.all;
   use ieee.std_logic_1164.all;
-  use ieee.std_logic_textio.all;
-library std;
-  use std.textio.all;
-library basic;
-  use basic.basic_elements.all;
 library math;
   use math.math_functions.all;
+library basic;
+  use basic.basic_elements.all;
 
 --------------------------------------------------------------------------------
 -- ENTITY definition
 --------------------------------------------------------------------------------
-entity rom_block is
+entity count_mod_m_init_clr is
   generic (
-    ROM_DEPTH : natural := 4;                                         -- ROM block depth (number of ROM lines)
-    ROM_WIDTH : natural := 8;                                         -- ROM block width
-    OBUF_INIT : std_logic_vector;                                     -- ROM output buffer initial value
-    FILE_INIT : string                                                -- ROM block initialization file name
+    M     : natural   := 2;                             -- Modulo value
+    INIT  : natural   := 0;                             -- Initial value
+    CLR   : natural   := 0;                             -- Clear value
+    DIR   : cnt_dir_t := UP                             -- Count direction
   );
   port (
     -- Input ports -------------------------------------------------------------
-    i_sys     : in  sys_ctrl_t;                                       -- System control
-    i_ena     : in  std_logic;                                        -- ROM block enable
-    i_addr    : in  std_logic_vector(clogb2(ROM_DEPTH)-1 downto 0);   -- ROM line address
+    i_sys : in  sys_ctrl_t;                             -- System control
+    i_clr : in  std_logic;                              -- Counter clear
+    i_tck : in  std_logic;                              -- Counter tick
     -- Output ports ------------------------------------------------------------
-    o_data    : out std_logic_vector(ROM_WIDTH-1 downto 0)            -- ROM line output data
- );
-end entity rom_block;
+    o_cnt : out std_logic_vector(clogb2(M)-1 downto 0)  -- Counter value
+  );
+end entity count_mod_m_init_clr;
 
 --------------------------------------------------------------------------------
 -- ARCHITECTURE definition
 --------------------------------------------------------------------------------
-architecture rtl of rom_block is
+architecture rtl of count_mod_m_init_clr is
   -- Constants -----------------------------------------------------------------
-  constant C_MEM_ROM_BLOCK_INIT_ADDR : std_logic_vector(clogb2(ROM_DEPTH)-1 downto 0) := (others => '0');
+  constant C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH : natural                                               := clogb2(M);
+  constant C_COUNT_MOD_M_INIT_CLR_CNT_INIT  : unsigned(C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH-1 downto 0) := to_unsigned(INIT, C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH);
+  constant C_COUNT_MOD_M_INIT_CLR_CNT_CLR   : unsigned(C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH-1 downto 0) := to_unsigned(CLR, C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH);
   -- Types ---------------------------------------------------------------------
-  type rom_block_t is array(0 to ROM_DEPTH-1) of std_logic_vector(ROM_WIDTH-1 downto 0);
+  -- (none)
   -- Aliases -------------------------------------------------------------------
   -- (none)
-  -- Functions -----------------------------------------------------------------
-  impure function read_data_file (
-    file_name : string
-  ) return rom_block_t is
-    -- Constants ---------------------------------------------------------------
-    -- (none)
-    -- Variables ---------------------------------------------------------------
-    file     file_ptr : text is file_name;      -- Pointer to data file
-    variable line_ptr : line;                   -- Pointer to line with data
-    variable rom_read : rom_block_t;            -- ROM block read data
-  begin
-    -- Read data lines from file
-    for i in rom_block_t'range loop
-      readline(file_ptr, line_ptr);
-      read(line_ptr, rom_read(i));
-    end loop;
-
-    -- Return data to caller
-    return rom_read;
-  end function read_data_file;
   -- Signals -------------------------------------------------------------------
-  signal rom_block : rom_block_t                            := read_data_file(FILE_INIT);
-  signal data_reg  : std_logic_vector(ROM_WIDTH-1 downto 0) := OBUF_INIT;
-  signal data_next : std_logic_vector(ROM_WIDTH-1 downto 0) := OBUF_INIT;
-  -- Attributes ----------------------------------------------------------------
+  signal cnt_res  : std_logic                                             := '0';
+  signal cnt_reg  : unsigned(C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH-1 downto 0) := C_COUNT_MOD_M_INIT_CLR_CNT_INIT;
+  signal cnt_next : unsigned(C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH-1 downto 0) := C_COUNT_MOD_M_INIT_CLR_CNT_INIT;
+  -- Atributes -----------------------------------------------------------------
   -- KEEP_HIERARCHY is used to prevent optimizations along the hierarchy
   -- boundaries.  The Vivado synthesis tool attempts to keep the same general
   -- hierarchies specified in the RTL, but for QoR reasons it can flatten or
@@ -95,15 +72,7 @@ architecture rtl of rom_block is
   -- attribute can only be set in the RTL.
   attribute KEEP_HIERARCHY        : string;
   attribute KEEP_HIERARCHY of rtl : architecture is "yes";
-  -- ROM_STYLE instructs the synthesis tool how to infer ROM memory.  Accepted
-  -- values are:
-  --  + block: Instructs the tool to infer RAMB type components
-  --  + distributed: Instructs the tool to infer the LUT ROMs
-  -- By default, the tool selects which ROM to infer based on heuristics that
-  -- give the best results for the most designs.
-  -- This can be set in the RTL and the XDC.
-  attribute ROM_STYLE              : string;
-  attribute ROM_STYLE of rom_block : signal is "block";
+  -- attribute MARK_DEBUG of >signal_name< : signal is "true";
   -- Use the KEEP attribute to prevent optimizations where signals are either
   -- optimized or absorbed into logic blocks. This attribute instructs the
   -- synthesis tool to keep the signal it was placed on, and that signal is
@@ -118,15 +87,23 @@ architecture rtl of rom_block is
   -- entity. If you need to keep specific ports, either use the
   -- -flatten_hierarchy none setting, or put a DONT_TOUCH on the module or
   -- entity itself.
-  attribute KEEP             : string;
-  attribute KEEP of data_reg : signal is "true";
+  attribute KEEP            : string;
+  attribute KEEP of cnt_reg : signal is "true";
 begin
 
 -- Assertions ------------------------------------------------------------------
--- (none)
+assert (M > 1)
+  report "M <= 1!  The modulo value must be greater than 1."
+  severity error;
+assert (INIT < M)
+  report "INIT >= M!  The initial counter value must be between 0 and M-1."
+  severity error;
+assert (CLR < M)
+  report "CLR >= M!  The clearing counter value must be between 0 and M-1."
+  severity error;
 
 --------------------------------------------------------------------------------
--- ROM block
+-- Modulo-m counter
 --------------------------------------------------------------------------------
 
 -- Registers -------------------------------------------------------------------
@@ -135,34 +112,85 @@ process(i_sys.clk)
 begin
   if (rising_edge(i_sys.clk)) then
     if (i_sys.rst = '1') then
-      data_reg <= OBUF_INIT;
+      cnt_reg <= C_COUNT_MOD_M_INIT_CLR_CNT_INIT;
     else
-      data_reg <= data_next;
+      cnt_reg <= cnt_next;
     end if;
   end if;
 end process;
 
 -- Input logic -----------------------------------------------------------------
--- (none)
+
+-- GENERATE BLOCK: DOWN-counter
+gen_in_cnt_down:
+if (DIR = DOWN) generate
+  proc_in_cnt_res_down:
+  cnt_res <= '1' when (cnt_reg = to_unsigned(0, C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH))
+        else '0';
+end generate;
+
+-- GENERATE BLOCK: UP-counter
+gen_in_cnt_up:
+if (DIR = UP) generate
+  proc_in_cnt_res_up:
+  cnt_res <= '1' when (cnt_reg = to_unsigned((M-1), C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH))
+        else '0';
+end generate;
 
 -- Next-state logic ------------------------------------------------------------
-proc_next_state:
-process(data_reg, i_sys.ena, i_sys.clr, i_ena, i_addr)
-begin
-  data_next <= data_reg;
-  if (i_sys.ena = '1') then
-    if (i_sys.clr = '1') then
-      data_next <= OBUF_INIT;
-    else
-      if (i_ena = '1') then
-        data_next <= rom_block(to_integer(unsigned(i_addr)));
+
+-- GENERATE BLOCK: DOWN-counter
+gen_next_state_cnt_down:
+if (DIR = DOWN) generate
+  proc_next_state_cnt_down:
+  process(cnt_reg, i_sys.ena, i_sys.clr, cnt_res, i_clr, i_tck)
+  begin
+    cnt_next <= cnt_reg;
+    if (i_sys.ena = '1') then
+      if (i_sys.clr = '1') then
+        cnt_next <= C_COUNT_MOD_M_INIT_CLR_CNT_CLR;
+      else
+        if (i_clr = '1') then
+          cnt_next <= C_COUNT_MOD_M_INIT_CLR_CNT_CLR;
+        elsif (i_tck = '1') then
+          if (cnt_res = '1') then
+            cnt_next <= to_unsigned((M-1), C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH);
+          else
+            cnt_next <= cnt_reg-1;
+          end if;
+        end if;
       end if;
     end if;
-  end if;
-end process;
+  end process;
+end generate;
+
+-- GENERATE BLOCK: UP-counter
+gen_next_state_cnt_up:
+if (DIR = UP) generate
+  proc_next_state_cnt_up:
+  process(cnt_reg, cnt_res, i_sys.clr, i_sys.ena, i_clr, i_tck)
+  begin
+    cnt_next <= cnt_reg;
+    if (i_sys.ena = '1') then
+      if (i_sys.clr = '1') then
+        cnt_next <= C_COUNT_MOD_M_INIT_CLR_CNT_CLR;
+      else
+        if (i_clr = '1') then
+          cnt_next <= C_COUNT_MOD_M_INIT_CLR_CNT_CLR;
+        elsif (i_tck = '1') then
+          if (cnt_res = '1') then
+            cnt_next <= to_unsigned(0, C_COUNT_MOD_M_INIT_CLR_CNT_WIDTH);
+          else
+            cnt_next <= cnt_reg+1;
+          end if;
+        end if;
+      end if;
+    end if;
+  end process;
+end generate;
 
 -- Output logic ----------------------------------------------------------------
-proc_out_o_data:
-o_data <= data_reg;
+proc_out_o_cnt:
+o_cnt <= std_logic_vector(cnt_reg);
 
 end architecture rtl;

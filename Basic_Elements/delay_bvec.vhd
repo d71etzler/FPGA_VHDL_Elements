@@ -83,7 +83,7 @@ begin
   if (rising_edge(i_sys.clk)) then
     if (i_sys.rst = '1') then
       delay_reg <= (others => INIT);
-    els
+    else
       delay_reg <= delay_next;
     end if;
   end if;

@@ -91,7 +91,8 @@ begin
 spi_ctrl_core_unit: spi_ctrl_core
   generic map (
     SPI_FRM_LEN   => C_SPI_ENGINE_SPI_FRM_LEN,
-    SPI_CTRL_MODE => SPI_CTRL_MODE
+    SPI_CTRL_MODE => SPI_CTRL_MODE,
+    SPI_SHIFT_DIR => SPI_SHIFT_DIR
   )
   port map (
     -- Input ports -------------------------------------------------------------

@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- File: spi_elements.vhd
+-- File: spi2_elements.vhd
 --
 -- !THIS FILE IS UNDER REVISION CONTROL!
 --
@@ -24,7 +24,7 @@ library basic;
 --------------------------------------------------------------------------------
 -- Package declarations
 --------------------------------------------------------------------------------
-package spi_elements is
+package spi2_elements is
 
 --------------------------------------------------------------------------------
 -- User constants
@@ -149,7 +149,8 @@ end component spi_ctrl_seq;
 component spi_ctrl_core is
   generic (
     SPI_FRM_LEN   : natural;
-    SPI_CTRL_MODE : spi_ctrl_mode_t
+    SPI_CTRL_MODE : spi_ctrl_mode_t;
+    SPI_SHIFT_DIR : spi_shift_dir_t
   );
   port (
     -- Input ports -------------------------------------------------------------
@@ -315,12 +316,12 @@ component spi_slave is
   );
 end component spi_slave;
 
-end package spi_elements;
+end package spi2_elements;
 
 --------------------------------------------------------------------------------
 -- Package definitions
 --------------------------------------------------------------------------------
-package body spi_elements is
+package body spi2_elements is
 
 --------------------------------------------------------------------------------
 -- Set SPI clock level based on SPI mode
@@ -343,4 +344,4 @@ begin
   end case;
 end function set_sclk_level;
 
-end package body spi_elements;
+end package body spi2_elements;

@@ -49,17 +49,17 @@ end entity spi_io_sync;
 -- ARCHITECTURE definition
 --------------------------------------------------------------------------------
 architecture structural of spi_io_sync is
-  -- Types ---------------------------------------------------------------------
-  type spi_signal_t is (SDI, SCLK, CSEL_N);                               -- SPI signals
-  type spi_signal_vector_t is array (spi_signal_t) of std_logic;          -- SPI signal vector type
   -- Constants -----------------------------------------------------------------
-  constant C_SPI_IO_SYNC_GUARD_LEN : natural             := SPI_GUARD_LEN;                                      -- Synchronization guard length
-  constant C_SPI_IO_SYNC_VECT_INIT : spi_signal_vector_t := (SPI_SDI_INIT & SPI_SCLK_INIT & SPI_CSEL_N_INIT);   -- Synchronization vector initial values
+  constant C_SPI_IO_SYNC_GUARD_LEN : natural                                             := SPI_GUARD_LEN;                                      -- Synchronization guard length
+  constant C_SPI_IO_SYNC_VECT_LEN  : natural                                             := 3;                                                  -- Synchronization vector length
+  constant C_SPI_IO_SYNC_VECT_INIT : std_logic_vector(C_SPI_IO_SYNC_VECT_LEN-1 downto 0) := (SPI_SDI_INIT & SPI_SCLK_INIT & SPI_CSEL_N_INIT);   -- Synchronization vector initial values
+  -- Types ---------------------------------------------------------------------
+  -- (none)
   -- Aliases -------------------------------------------------------------------
   -- (none)
   -- Signals -------------------------------------------------------------------
-  signal spi_signals_a : spi_signal_vector_t := C_SPI_IO_SYNC_VECT_INIT;  -- SPI signal vector (asynchronous)
-  signal spi_signals   : spi_signal_vector_t := C_SPI_IO_SYNC_VECT_INIT;  -- SPI signal vector (synchronous)
+  signal spi_signals_a : std_logic_vector(C_SPI_IO_SYNC_VECT_LEN-1 downto 0) := C_SPI_IO_SYNC_VECT_INIT;  -- SPI signal vector (asynchronous)
+  signal spi_signals   : std_logic_vector(C_SPI_IO_SYNC_VECT_LEN-1 downto 0) := C_SPI_IO_SYNC_VECT_INIT;  -- SPI signal vector (synchronous)
   -- Attributes ----------------------------------------------------------------
   -- KEEP_HIERARCHY is used to prevent optimizations along the hierarchy
   -- boundaries.  The Vivado synthesis tool attempts to keep the same general
@@ -99,22 +99,12 @@ begin
 --------------------------------------------------------------------------------
 
 -- Input logic -----------------------------------------------------------------
-
--- SPI Serial-Data-In assignment
-proc_in_spi_signals_a_sdi:
-spi_signals_a(SDI) <= i_sdi_a;
-
--- SPI Spi-CLK assignment
-proc_in_spi_signals_a_sclk:
-spi_signals_a(SCLK) <= i_sclk_a;
-
--- SPI Chip-SELection (negated) assignment
-proc_in_spi_signals_a_csel_n:
-spi_signals_a(CSEL_N) <= i_csel_na;
+proc_in_spi_signals_a:
+spi_signals_a <= (i_sdi_a & i_sclk_a & i_csel_na);
 
 -- Component instantiation -----------------------------------------------------
 gen_spi_io_sync_unit:
-for i in spi_signal_t generate
+for i in 0 to (C_SPI_IO_SYNC_VECT_LEN-1) generate
   spi_io_sync_unit: sync_bit
     generic map (
       GUARD_LEN => C_SPI_IO_SYNC_GUARD_LEN,
@@ -131,17 +121,7 @@ for i in spi_signal_t generate
 end generate;
 
 -- Output logic ----------------------------------------------------------------
-
--- SPI Serial-Data-In assignment
-proc_out_o_sdi:
-o_sdi <= spi_signals(SDI);
-
--- SPI Spi-CLK assignment
-proc_out_o_sclk:
-o_sclk <= spi_signals(SCLK);
-
--- SPI Chip-SELection (negated) assignment
-proc_out_o_csel_n:
-o_csel_n <= spi_signals(CSEL_N);
+proc_out_spi_signals:
+(o_sdi, o_sclk, o_csel_n) <= spi_signals;
 
 end architecture structural;

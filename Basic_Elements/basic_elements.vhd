@@ -179,6 +179,24 @@ component count_mod_m is
   );
 end component count_mod_m;
 
+-- Modulo-m counter with dedicated initial and clearing values -----------------
+component count_mod_m_init_clr is
+  generic (
+    M     : natural;
+    INIT  : natural;
+    CLR   : natural;
+    DIR   : cnt_dir_t
+  );
+  port (
+    -- Input ports -------------------------------------------------------------
+    i_sys : in  sys_ctrl_t;
+    i_clr : in  std_logic;
+    i_tck : in  std_logic;
+    -- Output ports ------------------------------------------------------------
+    o_cnt : out std_logic_vector(clogb2(M)-1 downto 0)
+  );
+end component count_mod_m_init_clr;
+
 -- Modulo-m divider ------------------------------------------------------------
 component divide_mod_m is
   generic (

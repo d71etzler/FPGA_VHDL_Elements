@@ -23,7 +23,7 @@ library basic;
 library math;
   use math.logic_functions.all;
 library nmos;
-  use nmos.nmos_pdrv_elements.all;
+  use nmos.nmos_elements.all;
 
 --------------------------------------------------------------------------------
 -- ENTITY definition
@@ -31,37 +31,37 @@ library nmos;
 entity nmos_hs_pdrv is
   generic (
     NMOS_CUR_LEN     : natural := 3;                                      -- NMOS charge/discharge current selection length (in bits)
-    NMOS_TSOFF_LEN   : natural := 16;                                     -- Strong-OFF timer register length (in bits)
+    NMOS_TSOFF_LEN   : natural := 16;                                     -- NMOS strong-OFF timer register length (in bits)
     PROT_CUR_LEN     : natural := 8;                                      -- Protection current selection register length (in bits)
-    PROT_TSLP_LEN    : natural := 16;                                     -- Proetection slope timer register length (in bits)
+    PROT_TSLP_LEN    : natural := 16;                                     -- Protection slope timer register length (in bits)
     PROT_CMP_LEN     : natural := 7                                       -- Protection comparator register length (in bits)
   );
   port (
     -- Input ports -------------------------------------------------------------
     i_sys            : in  sys_ctrl_t;                                    -- System control
-    i_bst_nmos_ctrl  : in  std_logic;                                     -- Boost NMOS pre-driver control
-    i_bat_nmos_ctrl  : in  std_logic;                                     -- Battery NMOS pre-driver control
-    i_diag_nmos_ctrl : in  std_logic;                                     -- Diagnostics NMOS pre-driver control
+    i_nmos_ctrl_bst  : in  std_logic;                                     -- Boost NMOS pre-driver control
+    i_nmos_ctrl_bat  : in  std_logic;                                     -- Battery NMOS pre-driver control
+    i_nmos_cur_bst   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Boost NMOS charge/discharge current selection
+    i_nmos_tsoff_bst : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);   -- Boost NMOS strong-OFF timer/counter value
+    i_nmos_cur_bat   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Battery NMOS charge/discharge current selection
+    i_nmos_tsoff_bat : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);   -- Battery NMOS strong-OFF timer/counter value
+    i_diag_ctrl      : in  std_logic;                                     -- Diagnostics control
     i_diag_prot_ena  : in  std_logic;                                     -- Diagnostics protection enable
-    i_bst_nmos_cur   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Boost NMOS charge/discharge current selection
-    i_bst_nmos_tsoff : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);   -- Boost NMOS strong-OFF timer value
-    i_bat_nmos_cur   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Battery NMOS charge/discharge current selection
-    i_bat_nmos_tsoff : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);   -- Battery NMOS strong-OFF timer value
-    i_bst_prot_cur   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);     -- Boost NMOS protection current
-    i_bst_prot_tslp  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);    -- Battery-to-Boost NMOS protection slope timer value
-    i_bat_prot_cur   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);     -- Battery NMOS protection current
-    i_bat_prot_tslp  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);    -- Boost-to-Battery NMOS protection slope timer value
-    i_diag_prot_cur  : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);     -- Diagnostics NMOS protection current
+    i_prot_cur_bst   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);     -- Boost NMOS protection current
+    i_prot_tslp_bst  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);    -- Boost NMOS slope timer/counter value
+    i_prot_cur_bat   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);     -- Battery NMOS protection current
+    i_prot_tslp_bat  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);    -- Battery NMOS slope timer/counter value
+    i_prot_cur_diag  : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);     -- Diagnostics protection current
     i_prot_cmp       : in  std_logic_vector(PROT_CMP_LEN-1 downto 0);     -- Protection comparator inputs (from all possible instances)
     i_prot_msk       : in  std_logic_vector(PROT_CMP_LEN-1 downto 0);     -- Protection comparator masks (cross-links between pre-drivers, topology dependent)
     i_prot_clr       : in  std_logic;                                     -- Protection register clear
     -- Output ports ------------------------------------------------------------
-    o_bst_nmos_ctrl  : out std_logic;                                     -- Boost NMOS pre-driver control
-    o_bst_nmos_soff  : out std_logic;                                     -- Boost NMOS strong-OFF control
-    o_bst_nmos_cur   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Boost NMOS charge/discharge current
-    o_bat_nmos_ctrl  : out std_logic;                                     -- Battery NMOS pre-driver control
-    o_bat_nmos_soff  : out std_logic;                                     -- Battery NMOS strong-Off control
-    o_bat_nmos_cur   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Battery NMOS charge/discharge control
+    o_nmos_ctrl_bst  : out std_logic;                                     -- Boost NMOS pre-driver control
+    o_nmos_soff_bst  : out std_logic;                                     -- Boost NMOS strong-OFF control
+    o_nmos_cur_bst   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Boost NMOS charge/discharge current
+    o_nmos_ctrl_bat  : out std_logic;                                     -- Battery NMOS pre-driver control
+    o_nmos_soff_bat  : out std_logic;                                     -- Battery NMOS strong-OFF control
+    o_nmos_cur_bat   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);     -- Battery NMOS charge/discharge control
     o_prot_cur       : out std_logic_vector(PROT_CUR_LEN-1 downto 0)      -- Protection comparator current threshold
   );
 end entity nmos_hs_pdrv;
@@ -77,12 +77,12 @@ architecture structural of nmos_hs_pdrv is
   -- Aliases -------------------------------------------------------------------
   -- (none)
   -- Signals -------------------------------------------------------------------
-  signal bst_nmos_ctrl : std_logic := '0';                                -- Boost NMOS control
-  signal bst_prot_set  : std_logic := '0';                                -- Boost NMOS protection set
-  signal bst_prot_clr  : std_logic := '1';                                -- Boost NMOS protection clear
-  signal bat_nmos_ctrl : std_logic := '0';                                -- Battery NMOS control
-  signal bat_prot_set  : std_logic := '0';                                -- Battery NMOS protection set
-  signal bat_prot_clr  : std_logic := '1';                                -- Battery NMOS protection clear
+  signal prot_set_bst : std_logic                                 := '0';               -- Boost NMOS protection set
+  signal prot_clr_bst : std_logic                                 := '1';               -- Boost NMOS protection clear
+  signal prot_msk_bst : std_logic_vector(PROT_CMP_LEN-1 downto 0) := (others => '0');   -- Masked Boost NMOS protection compare
+  signal prot_set_bat : std_logic                                 := '0';               -- Battery NMOS protection set
+  signal prot_clr_bat : std_logic                                 := '1';               -- Battery NMOS protection clear
+  signal prot_msk_bat : std_logic_vector(PROT_CMP_LEN-1 downto 0) := (others => '0');   -- Masked Battery NMOS protection compare
   -- Attributes ----------------------------------------------------------------
   -- (none)
 begin
@@ -120,18 +120,18 @@ assert ((PROT_CMP_LEN > 0) and (PROT_CMP_LEN <= 7))
 
 -- Input logic -----------------------------------------------------------------
 
--- Boost NMOS pre-driver control
-proc_in_bst_nmos_ctrl:
-bst_nmos_ctrl <= i_bst_nmos_ctrl;
+-- Masked pre-driver NMOS Boost compare
+proc_in_prot_msk_bst:
+prot_msk_bst <= i_prot_cmp and i_prot_msk;
 
--- Boost NMOS pre-driver protection clear
-proc_in_bst_prot_clr:
-bst_prot_clr <= '1' when ((i_prot_clr = '1') and (bst_prot_set = '0'))
+-- Pre-driver NMOS Boost protection set
+proc_in_prot_set_bst:
+prot_set_bst <= or_reduce(prot_msk_bst);
+
+-- Pre-driver NMOS Boost protection clear
+proc_in_prot_clr_bst:
+prot_clr_bst <= '1' when ((i_prot_clr = '1') and (prot_set_bst = '0'))
            else '0';
-
--- Boost NMOS pre-driver protection set
-proc_in_bst_prot_set:
-bst_prot_set <= or_reduce(i_prot_cmp and i_prot_msk);
 
 -- Component instantiation -----------------------------------------------------
 nmos_hs_pdrv_bst_unit: nmos_pdrv_ctrl
@@ -142,16 +142,16 @@ nmos_hs_pdrv_bst_unit: nmos_pdrv_ctrl
   port map (
     -- Input ports -------------------------------------------------------------
     i_sys      => i_sys,
-    i_ctrl     => bst_nmos_ctrl,
-    i_diag     => i_diag_nmos_ctrl,
-    i_prot_set => bst_prot_set,
-    i_prot_clr => bst_prot_clr,
-    i_cur      => i_bst_nmos_cur,
-    i_tsoff    => i_bst_nmos_tsoff,
+    i_ctrl     => i_nmos_ctrl_bst,
+    i_diag     => i_diag_ctrl,
+    i_prot_set => prot_set_bst,
+    i_prot_clr => prot_clr_bst,
+    i_cur      => i_nmos_cur_bst,
+    i_tsoff    => i_nmos_tsoff_bst,
     -- Output ports ------------------------------------------------------------
-    o_ctrl     => o_bst_nmos_ctrl,
-    o_soff     => o_bst_nmos_soff,
-    o_cur      => o_bst_nmos_cur
+    o_ctrl     => o_nmos_ctrl_bst,
+    o_soff     => o_nmos_soff_bst,
+    o_cur      => o_nmos_cur_bst
   );
 
 -- Output logic ----------------------------------------------------------------
@@ -163,17 +163,17 @@ nmos_hs_pdrv_bst_unit: nmos_pdrv_ctrl
 
 -- Input logic -----------------------------------------------------------------
 
--- Battery NMOS pre-driver control (based on ASIC pin or diagnostics input)
-proc_in_bat_nmos_ctrl:
-bat_nmos_ctrl <= i_bat_nmos_ctrl;
+-- Masked pre-driver NMOS Battery compare
+proc_in_prot_msk_bat:
+prot_msk_bat <= i_prot_cmp and i_prot_msk;
 
--- Battery NMOS pre-driver protection set
-proc_in_bat_prot_set:
-bat_prot_set <= or_reduce(i_prot_cmp and i_prot_msk);
+-- Pre-driver NMOS Battery protection set
+proc_in_prot_set_bat:
+prot_set_bat <= or_reduce(prot_msk_bat);
 
--- Battery NMOS pre-driver protection clear
-proc_in_bat_prot_clr:
-bat_prot_clr <= '1' when ((i_prot_clr = '1') and (bat_prot_set = '0'))
+-- Pre-driver NMOS Battery protection clear
+proc_in_prot_clr_bat:
+prot_clr_bat <= '1' when ((i_prot_clr = '1') and (prot_set_bat = '0'))
            else '0';
 
 -- Component instantiation -----------------------------------------------------
@@ -185,16 +185,16 @@ nmos_hs_pdrv_bat_unit: nmos_pdrv_ctrl
   port map (
     -- Input ports -------------------------------------------------------------
     i_sys      => i_sys,
-    i_ctrl     => bat_nmos_ctrl,
-    i_diag     => i_diag_nmos_ctrl,
-    i_prot_set => bat_prot_set,
-    i_prot_clr => bat_prot_clr,
-    i_cur      => i_bat_nmos_cur,
-    i_tsoff    => i_bat_nmos_tsoff,
+    i_ctrl     => i_nmos_ctrl_bat,
+    i_diag     => i_diag_ctrl,
+    i_prot_set => prot_set_bat,
+    i_prot_clr => prot_clr_bat,
+    i_cur      => i_nmos_cur_bat,
+    i_tsoff    => i_nmos_tsoff_bat,
     -- Output ports ------------------------------------------------------------
-    o_ctrl     => o_bat_nmos_ctrl,
-    o_soff     => o_bat_nmos_soff,
-    o_cur      => o_bat_nmos_cur
+    o_ctrl     => o_nmos_ctrl_bat,
+    o_soff     => o_nmos_soff_bat,
+    o_cur      => o_nmos_cur_bat
   );
 
 -- Output logic ----------------------------------------------------------------
@@ -216,14 +216,14 @@ nmos_hs_prdrv_prot_unit: nmos_prot_ctrl
   port map (
     -- Input ports -------------------------------------------------------------
     i_sys           => i_sys,
-    i_bst_ctrl      => i_bst_nmos_ctrl,
-    i_bat_ctrl      => i_bat_nmos_ctrl,
+    i_ctrl_bst      => i_nmos_ctrl_bst,
+    i_ctrl_bat      => i_nmos_ctrl_bat,
     i_diag_prot_ena => i_diag_prot_ena,
-    i_bst_cur       => i_bst_prot_cur,
-    i_bst_tslp      => i_bst_prot_tslp,
-    i_bat_cur       => i_bat_prot_cur,
-    i_bat_tslp      => i_bat_prot_tslp,
-    i_diag_cur      => i_diag_prot_cur,
+    i_cur_bst       => i_prot_cur_bst,
+    i_tslp_bst      => i_prot_tslp_bst,
+    i_cur_bat       => i_prot_cur_bat,
+    i_tslp_bat      => i_prot_tslp_bat,
+    i_cur_diag      => i_prot_cur_diag,
     -- Output ports ------------------------------------------------------------
     o_cur           => o_prot_cur
   );

@@ -30,8 +30,8 @@ entity nmos_prot_seq is
   port (
     -- Input ports -------------------------------------------------------------
     i_sys           : in  sys_ctrl_t;   -- System control
-    i_bst_ctrl      : in  std_logic;    -- Boost NMOS pre-driver control
-    i_bat_ctrl      : in  std_logic;    -- Battery NMOS pre-driver control
+    i_ctrl_bst      : in  std_logic;    -- Boost NMOS pre-driver control
+    i_ctrl_bat      : in  std_logic;    -- Battery NMOS pre-driver control
     i_diag_prot_ena : in  std_logic;    -- Diagnostics protection enable
     -- Output ports ------------------------------------------------------------
     o_tbst_bat_ena  : out std_logic;    -- Boost-to-Battery slope timer enable
@@ -136,7 +136,7 @@ end process;
 
 -- Next-state logic ------------------------------------------------------------
 proc_next_state:
-process(state_reg, i_sys.ena, i_sys.clr, i_bst_ctrl, i_bat_ctrl, i_diag_prot_ena)
+process(state_reg, i_sys.ena, i_sys.clr, i_ctrl_bst, i_ctrl_bat, i_diag_prot_ena)
 begin
   state_next <= state_reg;
   if (i_sys.ena = '1') then
@@ -146,81 +146,81 @@ begin
       case state_reg is
         -- STATE: RESET --------------------------------------------------------
         when RESET =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= RES_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= RES_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= RES_TO_DIAG;
           end if;
         -- STATE: RES_TO_BST ---------------------------------------------------
         when RES_TO_BST =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= RES_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= BST_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;
           end if;
         -- STATE: RES_TO_BAT ---------------------------------------------------
         when RES_TO_BAT =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= BAT_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= RES_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;
           end if;
         -- STATE: RES_TO_DIAG --------------------------------------------------
         when RES_TO_DIAG =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= DIAG_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= DIAG_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= RES_TO_DIAG;
           end if;
         -- STATE: BST_TO_BAT ---------------------------------------------------
         when BST_TO_BAT =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= BAT_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= BST_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;
           end if;
         -- STATE: BAT_TO_BST ---------------------------------------------------
         when BAT_TO_BST =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= BAT_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= BST_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;
           end if;
         -- STATE: BXT_TO_DIAG --------------------------------------------------
         when BXT_TO_DIAG =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= DIAG_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= DIAG_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;
           end if;
         -- STATE: DIAG_TO_BST --------------------------------------------------
         when DIAG_TO_BST =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= DIAG_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= BST_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;
           end if;
         -- STATE: DIAG_TO_BAT --------------------------------------------------
         when DIAG_TO_BAT =>
-          if (i_bst_ctrl = '1') then
+          if (i_ctrl_bst = '1') then
             state_next <= BAT_TO_BST;
-          elsif (i_bat_ctrl = '1') then
+          elsif (i_ctrl_bat = '1') then
             state_next <= DIAG_TO_BAT;
           elsif (i_diag_prot_ena = '1') then
             state_next <= BXT_TO_DIAG;

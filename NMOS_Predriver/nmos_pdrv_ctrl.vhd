@@ -20,6 +20,8 @@ library ieee;
   use ieee.std_logic_1164.all;
 library basic;
   use basic.basic_elements.all;
+library nmos;
+  use nmos.nmos_elements.all;
 
 --------------------------------------------------------------------------------
 -- ENTITY definition
@@ -50,19 +52,19 @@ end entity nmos_pdrv_ctrl;
 --------------------------------------------------------------------------------
 architecture structural of nmos_pdrv_ctrl is
   -- Constants -----------------------------------------------------------------
-  constant C_NMOS_PDRV_CTRL_PROT_EVENT_BUF_INIT      : std_logic := '0';                                                                          -- Protection event buffer initial value
-  constant C_NMOS_PDRV_CTRL_TSOFF_COUNT_MODULO_PLUS1 : natural   := (2**TSOFF_LEN);                                                               -- Strong OFF-path delay counter modulo value (due to counter implementation Modulo+1)
-  constant C_NMOS_PDRV_CTRL_TSOFF_COUNT_INIT         : natural   := 0;                                                                            -- Strong OFF-path delay counter initial value
-  constant C_NMOS_PDRV_CTRL_CUR_SEL_LIM              : natural   := 4;                                                                            -- NMOS current selection limit (4 x limited current options plus 1 x unlimited currents)
+  constant C_NMOS_PDRV_CTRL_PROT_EVENT_BUF_INIT    : std_logic := '0';                                                                          -- Protection event buffer initial value
+  constant C_NMOS_PDRV_CTRL_TSOFF_CNT_MODULO_PLUS1 : natural   := (2**TSOFF_LEN);                                                               -- Strong OFF-path delay counter modulo value (due to counter implementation Modulo+1)
+  constant C_NMOS_PDRV_CTRL_TSOFF_CNT_INIT         : natural   := 0;                                                                            -- Strong OFF-path delay counter initial value
+  constant C_NMOS_PDRV_CTRL_CUR_SEL_LIM            : natural   := 4;                                                                            -- NMOS current selection limit (4 x limited current options plus 1 x unlimited currents)
   -- Types ---------------------------------------------------------------------
   -- (none)
   -- Aliases -------------------------------------------------------------------
   -- (none)
   -- Signals -------------------------------------------------------------------
-  signal prot_event_buf  : std_logic                              := '0';                                                                         -- Protection event buffer
-  signal tsoff_count_clr : std_logic                              := '1';                                                                         -- Strong OFF-path delay counter clear
-  signal tsoff_count_tck : std_logic                              := '0';                                                                         -- Strong OFF-path delay counter tick
-  signal tsoff_count_cnt : std_logic_vector(TSOFF_LEN-1 downto 0) := std_logic_vector(to_unsigned(C_NMOS_PDRV_CTRL_TSOFF_COUNT_INIT,TSOFF_LEN));  -- Strong OFF-path delay counter value
+  signal tsoff_cnt_clr  : std_logic                              := '1';                                                                        -- Strong OFF-path delay counter clear
+  signal tsoff_cnt_tck  : std_logic                              := '0';                                                                        -- Strong OFF-path delay counter tick
+  signal tsoff_cnt_ovr  : std_logic                              := '0';                                                                        -- Strong-OFF-path delay counter overflow
+  signal tsoff_cnt_cnt  : std_logic_vector(TSOFF_LEN-1 downto 0) := std_logic_vector(to_unsigned(C_NMOS_PDRV_CTRL_TSOFF_CNT_INIT,TSOFF_LEN));   -- Strong OFF-path delay counter value
   -- Attributes ----------------------------------------------------------------
   -- (none)
 begin
@@ -86,26 +88,31 @@ assert ((i_prot_set = '0') or (i_prot_clr = '0'))
   severity note;
 
 --------------------------------------------------------------------------------
--- Protection event buffer
--- Store a protection event until cleared explicitely.
+-- NMOS Pre-driver control sequencer
 --------------------------------------------------------------------------------
 
 -- Input logic -----------------------------------------------------------------
--- (none)
+
+-- Strong-OFF delay counter value overflow
+proc_in_tsoff_cnt_ovr:
+tsoff_cnt_ovr <= '1' when (tsoff_cnt_cnt >= i_tsoff)
+            else '0';
 
 -- Component instantiation -----------------------------------------------------
-nmos_pdrv_prot_event_unit: buffer_bit
-  generic map (
-    INIT  => C_NMOS_PDRV_CTRL_PROT_EVENT_BUF_INIT
-  )
+nmos_pdrv_ctrl_seq_unit: nmos_pdrv_seq
   port map (
     -- Input ports -------------------------------------------------------------
-    i_sys => i_sys,
-    i_clr => i_prot_clr,
-    i_set => i_prot_set,
-    i_bit => '1',
+    i_sys           => i_sys,
+    i_ctrl          => i_ctrl,
+    i_diag          => i_diag,
+    i_prot_set      => i_prot_set,
+    i_prot_clr      => i_prot_clr,
+    i_tsoff_cnt_ovr => tsoff_cnt_ovr,
     -- Output ports ------------------------------------------------------------
-    o_bit => prot_event_buf
+    o_ctrl          => o_ctrl,
+    o_soff          => o_soff,
+    o_tsoff_cnt_clr => tsoff_cnt_clr,
+    o_tsoff_cnt_tck => tsoff_cnt_tck
   );
 
 -- Output logic ----------------------------------------------------------------
@@ -116,52 +123,29 @@ nmos_pdrv_prot_event_unit: buffer_bit
 --------------------------------------------------------------------------------
 
 -- Input logic -----------------------------------------------------------------
-
--- Strong OFF-path delay counter clear
-proc_in_tsoff_count_clr:
-tsoff_count_clr <= '1' when (i_ctrl = '1')
-              else '0';
-
--- Strong OFF-path delay counter tick
-proc_in_tsoff_count_tck:
-tsoff_count_tck <= '1' when ((i_ctrl = '0') and (tsoff_count_cnt < i_tsoff))
-              else '0';
+-- (none)
 
 -- Component instantiation -----------------------------------------------------
-nmos_pdrv_tsoff_count_unit: count_mod_m
+nmos_pdrv_ctrl_tsoff_count_unit: count_mod_m
   generic map (
-    M     => C_NMOS_PDRV_CTRL_TSOFF_COUNT_MODULO_PLUS1,
-    INIT  => C_NMOS_PDRV_CTRL_TSOFF_COUNT_INIT,
+    M     => C_NMOS_PDRV_CTRL_TSOFF_CNT_MODULO_PLUS1,
+    INIT  => C_NMOS_PDRV_CTRL_TSOFF_CNT_INIT,
     DIR   => UP
   )
   port map (
     -- Input ports -------------------------------------------------------------
     i_sys => i_sys,
-    i_clr => tsoff_count_clr,
-    i_tck => tsoff_count_tck,
+    i_clr => tsoff_cnt_clr,
+    i_tck => tsoff_cnt_tck,
     -- Output ports ------------------------------------------------------------
-    o_cnt => tsoff_count_cnt
+    o_cnt => tsoff_cnt_cnt
   );
 
 -- Output logic ----------------------------------------------------------------
 
--- NMOS charge/discharge current selection
+-- NMOS charge/discharge current selection/limitation
 proc_out_o_cur:
 o_cur <= i_cur when (unsigned(i_cur) <= to_unsigned(C_NMOS_PDRV_CTRL_CUR_SEL_LIM, CUR_LEN))
     else std_logic_vector(to_unsigned(C_NMOS_PDRV_CTRL_CUR_SEL_LIM, CUR_LEN));
-
--- NMOS control
-proc_out_o_ctrl:
-o_ctrl <= i_ctrl when ((prot_event_buf = '0') and (i_diag = '0'))
-     else '1'    when (i_diag = '1')
-     else '0';
-
--- Strong OFF-path
--- Additional 'and' of tsoff_count_clr in first branch is necessary for correct
--- operation for a set point of i_tsoff = 0.
-proc_out_o_soff:
-o_soff <= '1' when ((tsoff_count_cnt >= i_tsoff) and (tsoff_count_clr = '0') and (i_diag = '0'))
-     else '1' when ((prot_event_buf = '1') and (i_diag = '0'))
-     else '0';
 
 end architecture structural;

@@ -23,7 +23,7 @@ library basic;
 library math;
   use math.logic_functions.all;
 library nmos;
-  use nmos.nmos_pdrv_elements.all;
+  use nmos.nmos_elements.all;
 
 --------------------------------------------------------------------------------
 -- ENTITY definition
@@ -36,14 +36,14 @@ entity nmos_prot_ctrl is
   port (
     -- Input ports -------------------------------------------------------------
     i_sys           : in  sys_ctrl_t;                               -- System control
-    i_bst_ctrl      : in  std_logic;                                -- Boost NMOS pre-driver control
-    i_bat_ctrl      : in  std_logic;                                -- Battery NMOS pre-driver control
+    i_ctrl_bst      : in  std_logic;                                -- Boost NMOS pre-driver control
+    i_ctrl_bat      : in  std_logic;                                -- Battery NMOS pre-driver control
     i_diag_prot_ena : in  std_logic;                                -- Diagnostics protetion enable
-    i_bst_cur       : in  std_logic_vector(CUR_LEN-1 downto 0);     -- Boost NMOS protection current
-    i_bst_tslp      : in  std_logic_vector(TSLP_LEN-1 downto 0);    -- Battery-to-Boost slope timer prescale value
-    i_bat_cur       : in  std_logic_vector(CUR_LEN-1 downto 0);     -- Battery NMOS protection current
-    i_bat_tslp      : in  std_logic_vector(TSLP_LEN-1 downto 0);    -- Boost-to-Battery slope timer prescale value
-    i_diag_cur      : in  std_logic_vector(CUR_LEN-1 downto 0);     -- Diagnostics NMOS protection current
+    i_cur_bst       : in  std_logic_vector(CUR_LEN-1 downto 0);     -- Boost NMOS protection current
+    i_tslp_bst      : in  std_logic_vector(TSLP_LEN-1 downto 0);    -- Battery-to-Boost slope timer prescale value
+    i_cur_bat       : in  std_logic_vector(CUR_LEN-1 downto 0);     -- Battery NMOS protection current
+    i_tslp_bat      : in  std_logic_vector(TSLP_LEN-1 downto 0);    -- Boost-to-Battery slope timer prescale value
+    i_cur_diag      : in  std_logic_vector(CUR_LEN-1 downto 0);     -- Diagnostics NMOS protection current
     -- Output ports ------------------------------------------------------------
     o_cur           : out std_logic_vector(CUR_LEN-1 downto 0)      -- Protection comparator current threshold
   );
@@ -117,8 +117,8 @@ nmos_prot_ctrl_nmos_change_unit: nmos_prot_seq
   port map (
     -- Input ports -------------------------------------------------------------
     i_sys           => i_sys,
-    i_bst_ctrl      => i_bst_ctrl,
-    i_bat_ctrl      => i_bat_ctrl,
+    i_ctrl_bst      => i_ctrl_bst,
+    i_ctrl_bat      => i_ctrl_bat,
     i_diag_prot_ena => i_diag_prot_ena,
     -- Output ports ------------------------------------------------------------
     o_tbst_bat_ena  => tbst_bat_count_ena,
@@ -144,7 +144,7 @@ tbst_bat_count_clr <= '1' when (tbst_bat_count_ena = '0')
 
 -- Boost-to-Battery delay timer/counter tick
 proc_in_tbst_bat_count_tck:
-tbst_bat_count_tck <= '1' when ((tbst_bat_count_ena = '1') and (tbst_bat_count_cnt < i_bat_tslp))
+tbst_bat_count_tck <= '1' when ((tbst_bat_count_ena = '1') and (tbst_bat_count_cnt < i_tslp_bat))
                  else '0';
 
 -- Component instantiation -----------------------------------------------------
@@ -179,7 +179,7 @@ tbat_bst_count_clr <= '1' when (tbat_bst_count_ena = '0')
 
 -- Battery-to-Boost delay timer/counter tick
 proc_in_tbat_bst_count_tck:
-tbat_bst_count_tck <= '1' when ((tbat_bst_count_ena = '1') and (tbat_bst_count_cnt < i_bst_tslp))
+tbat_bst_count_tck <= '1' when ((tbat_bst_count_ena = '1') and (tbat_bst_count_cnt < i_tslp_bst))
                  else '0';
 
 -- Component instantiation -----------------------------------------------------
@@ -209,8 +209,8 @@ nmos_prot_tbat_to_bst_count_unit: count_mod_m
 
 -- Slope timers elapsed
 proc_in_cur_thr_count_lpsd:
-cur_thr_count_lpsd <= TBST_BAT_LPSD  when ((tbst_bat_count_ena  = '1') and (tbst_bat_count_cnt = i_bat_tslp))
-                 else TBAT_BST_LPSD  when ((tbat_bst_count_ena  = '1') and (tbat_bst_count_cnt = i_bst_tslp))
+cur_thr_count_lpsd <= TBST_BAT_LPSD  when ((tbst_bat_count_ena  = '1') and (tbst_bat_count_cnt = i_tslp_bat))
+                 else TBAT_BST_LPSD  when ((tbat_bst_count_ena  = '1') and (tbat_bst_count_cnt = i_tslp_bst))
                  else TBXT_DIAG_LPSD when  (tbxt_diag_count_ena = '1')
                  else DIAG_TBST_LPSD when  (diag_tbst_count_ena = '1')
                  else DIAG_TBAT_LPSD when  (diag_tbat_count_ena = '1')
@@ -218,11 +218,11 @@ cur_thr_count_lpsd <= TBST_BAT_LPSD  when ((tbst_bat_count_ena  = '1') and (tbst
 
 -- Current threshold multiplexer
 proc_in_cur_thr_mux:
-cur_thr_mux <= i_bst_cur  when (cur_thr_count_lpsd = TBAT_BST_LPSD)
-          else i_bst_cur  when (cur_thr_count_lpsd = DIAG_TBST_LPSD)
-          else i_bat_cur  when (cur_thr_count_lpsd = TBST_BAT_LPSD)
-          else i_bat_cur  when (cur_thr_count_lpsd = DIAG_TBAT_LPSD)
-          else i_diag_cur when (cur_thr_count_lpsd = TBXT_DIAG_LPSD)
+cur_thr_mux <= i_cur_bst  when (cur_thr_count_lpsd = TBAT_BST_LPSD)
+          else i_cur_bst  when (cur_thr_count_lpsd = DIAG_TBST_LPSD)
+          else i_cur_bat  when (cur_thr_count_lpsd = TBST_BAT_LPSD)
+          else i_cur_bat  when (cur_thr_count_lpsd = DIAG_TBAT_LPSD)
+          else i_cur_diag when (cur_thr_count_lpsd = TBXT_DIAG_LPSD)
           else cur_thr_buf;
 
 -- Current threshold buffer set
