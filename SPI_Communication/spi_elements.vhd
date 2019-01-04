@@ -247,43 +247,6 @@ component spi_hshk_din_seq is
   );
 end component spi_hshk_din_seq;
 
--- SPI output data handshake sequencer (RAM=>SPI) ------------------------------
-component spi_hshk_dout_seq is
-  port (
-    -- Input ports -------------------------------------------------------------
-    i_sys    : in  sys_ctrl_t;
-    i_ena    : in  std_logic;
-    i_req    : in  std_logic;
-    -- Output ports ------------------------------------------------------------
-    o_ack    : out std_logic;
-    o_load_s : out std_logic;
-    o_err    : out std_logic
-  );
-end component spi_hshk_dout_seq;
-
--- SPI handshake core ----------------------------------------------------------
-component spi_hshk_core is
-  generic (
-    SPI_MSG_LEN   : natural
-  );
-  port (
-    -- Input ports -------------------------------------------------------------
-    i_sys         : in  sys_ctrl_t;
-    i_csel        : in  std_logic;
-    i_mdi_load_s  : in  std_logic;
-    i_mdi_data    : in  std_logic_vector(SPI_MSG_LEN-1 downto 0);
-    i_mdi_ack     : in  std_logic;
-    i_mdo_req     : in  std_logic;
-    i_mdo_data    : in  std_logic_vector(SPI_MSG_LEN-1 downto 0);
-    -- Output ports ------------------------------------------------------------
-    o_mdi_req     : out std_logic;
-    o_mdi_data    : out std_logic_vector(SPI_MSG_LEN-1 downto 0);
-    o_mdo_ack     : out std_logic;
-    o_mdo_load_s  : out std_logic;
-    o_mdo_data    : out std_logic_vector(SPI_MSG_LEN-1 downto 0)
-  );
-end component spi_hshk_core;
-
 -- SPI slave -------------------------------------------------------------------
 component spi_slave is
   generic (

@@ -68,12 +68,14 @@ component nmos_pdrv_seq is
   port (
     -- Input ports -------------------------------------------------------------
     i_sys           : in  sys_ctrl_t;
+    i_ovld          : in  std_logic;
     i_ctrl          : in  std_logic;
     i_diag          : in  std_logic;
     i_prot_set      : in  std_logic;
     i_prot_clr      : in  std_logic;
     i_tsoff_cnt_ovr : in  std_logic;
     -- Output ports ------------------------------------------------------------
+    o_trst_n        : out std_logic;
     o_ctrl          : out std_logic;
     o_soff          : out std_logic;
     o_tsoff_cnt_clr : out std_logic;
@@ -90,6 +92,7 @@ component nmos_pdrv_ctrl is
   port (
     -- Input ports -------------------------------------------------------------
     i_sys      : in  sys_ctrl_t;
+    i_ovld     : in  std_logic;
     i_ctrl     : in  std_logic;
     i_diag     : in  std_logic;
     i_prot_set : in  std_logic;
@@ -97,6 +100,7 @@ component nmos_pdrv_ctrl is
     i_cur      : in  std_logic_vector(CUR_LEN-1 downto 0);
     i_tsoff    : in  std_logic_vector(TSOFF_LEN-1 downto 0);
     -- Output ports ------------------------------------------------------------
+    o_trst_n   : out std_logic;
     o_ctrl     : out std_logic;
     o_soff     : out std_logic;
     o_cur      : out std_logic_vector(CUR_LEN-1 downto 0)
@@ -145,75 +149,79 @@ end component nmos_prot_ctrl;
 -- NMOS High Side Pre-Driver ---------------------------------------------------
 component nmos_hs_pdrv is
   generic (
-    NMOS_CUR_LEN     : natural;
-    NMOS_TSOFF_LEN   : natural;
-    PROT_CUR_LEN     : natural;
-    PROT_TSLP_LEN    : natural;
-    PROT_CMP_LEN     : natural
+    NMOS_CUR_LEN      : natural;
+    NMOS_TSOFF_LEN    : natural;
+    PROT_CUR_LEN      : natural;
+    PROT_TSLP_LEN     : natural
   );
   port (
     -- Input ports -------------------------------------------------------------
-    i_sys            : in  sys_ctrl_t;
-    i_nmos_ctrl_bst  : in  std_logic;
-    i_nmos_ctrl_bat  : in  std_logic;
-    i_nmos_cur_bst   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);
-    i_nmos_tsoff_bst : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);
-    i_nmos_cur_bat   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);
-    i_nmos_tsoff_bat : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);
-    i_diag_ctrl      : in  std_logic;
-    i_diag_prot_ena  : in  std_logic;
-    i_prot_cur_bst   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
-    i_prot_tslp_bst  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
-    i_prot_cur_bat   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
-    i_prot_tslp_bat  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
-    i_prot_cur_diag  : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
-    i_prot_cmp       : in  std_logic_vector(PROT_CMP_LEN-1 downto 0);
-    i_prot_msk       : in  std_logic_vector(PROT_CMP_LEN-1 downto 0);
-    i_prot_clr       : in  std_logic;
+    i_sys             : in  sys_ctrl_t;
+    i_nmos_ovld_bst   : in  std_logic;
+    i_nmos_ctrl_bst   : in  std_logic;
+    i_nmos_cur_bst    : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);
+    i_nmos_tsoff_bst  : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);
+    i_nmos_ovld_bat   : in  std_logic;
+    i_nmos_ctrl_bat   : in  std_logic;
+    i_nmos_cur_bat    : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);
+    i_nmos_tsoff_bat  : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);
+    i_prot_cur_bst    : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
+    i_prot_tslp_bst   : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
+    i_prot_set_bst    : in  std_logic;
+    i_prot_clr_bst    : in  std_logic;
+    i_prot_cur_bat    : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
+    i_prot_tslp_bat   : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
+    i_prot_set_bat    : in  std_logic;
+    i_prot_clr_bat    : in  std_logic;
+    i_prot_cur_diag   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
+    i_diag_ctrl       : in  std_logic;
+    i_diag_prot_ena   : in  std_logic;
     -- Output ports ------------------------------------------------------------
-    o_nmos_ctrl_bst  : out std_logic;
-    o_nmos_soff_bst  : out std_logic;
-    o_nmos_cur_bst   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);
-    o_nmos_ctrl_bat  : out std_logic;
-    o_nmos_soff_bat  : out std_logic;
-    o_nmos_cur_bat   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);
-    o_prot_cur       : out std_logic_vector(PROT_CUR_LEN-1 downto 0)
+    o_nmos_trst_bst_n : out std_logic;
+    o_nmos_ctrl_bst   : out std_logic;
+    o_nmos_soff_bst   : out std_logic;
+    o_nmos_cur_bst    : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);
+    o_nmos_trst_bat_n : out std_logic;
+    o_nmos_ctrl_bat   : out std_logic;
+    o_nmos_soff_bat   : out std_logic;
+    o_nmos_cur_bat    : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);
+    o_prot_cur        : out std_logic_vector(PROT_CUR_LEN-1 downto 0)
   );
 end component nmos_hs_pdrv;
 
 -- NMOS Low Side Pre-Driver ----------------------------------------------------
 component nmos_ls_pdrv is
   generic (
-    NMOS_HGRP_LEN    : natural;
-    NMOS_CUR_LEN     : natural;
-    NMOS_TSOFF_LEN   : natural;
-    PROT_CUR_LEN     : natural;
-    PROT_TSLP_LEN    : natural;
-    PROT_CMP_LEN     : natural
+    NMOS_HGRP_LEN     : natural;
+    NMOS_CUR_LEN      : natural;
+    NMOS_TSOFF_LEN    : natural;
+    PROT_CUR_LEN      : natural;
+    PROT_TSLP_LEN     : natural
   );
   port (
     -- Input ports -------------------------------------------------------------
-    i_sys            : in  sys_ctrl_t;
-    i_nmos_ctrl_bst  : in  std_logic_vector(NMOS_HGRP_LEN-1 downto 0);
-    i_nmos_ctrl_bat  : in  std_logic_vector(NMOS_HGRP_LEN-1 downto 0);
-    i_nmos_ctrl_sel  : in  std_logic;
-    i_nmos_cur_sel   : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);
-    i_nmos_tsoff_sel : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);
-    i_diag_ctrl      : in  std_logic;
-    i_diag_prot_ena  : in  std_logic;
-    i_prot_cur_bst   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
-    i_prot_tslp_bst  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
-    i_prot_cur_bat   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
-    i_prot_tslp_bat  : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
-    i_prot_cur_diag  : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
-    i_prot_cmp       : in  std_logic_vector(PROT_CMP_LEN-1 downto 0);
-    i_prot_msk       : in  std_logic_vector(PROT_CMP_LEN-1 downto 0);
-    i_prot_clr       : in  std_logic;
+    i_sys             : in  sys_ctrl_t;
+    i_nmos_ctrl_bst   : in  std_logic;
+    i_nmos_ctrl_bat   : in  std_logic;
+    i_nmos_ovld_sel   : in  std_logic;
+    i_nmos_ctrl_sel   : in  std_logic;
+    i_nmos_cur_sel    : in  std_logic_vector(NMOS_CUR_LEN-1 downto 0);
+    i_nmos_tsoff_sel  : in  std_logic_vector(NMOS_TSOFF_LEN-1 downto 0);
+    i_prot_cur_bst    : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
+    i_prot_tslp_bst   : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
+    i_prot_cur_bat    : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
+    i_prot_tslp_bat   : in  std_logic_vector(PROT_TSLP_LEN-1 downto 0);
+    i_prot_set_sel    : in  std_logic;
+    i_prot_clr_sel    : in  std_logic;
+    i_prot_cur_diag   : in  std_logic_vector(PROT_CUR_LEN-1 downto 0);
+    i_diag_ctrl       : in  std_logic;
+    i_diag_prot_ena   : in  std_logic;
     -- Output ports ------------------------------------------------------------
-    o_nmos_ctrl_sel  : out std_logic;
-    o_nmos_soff_sel  : out std_logic;
-    o_nmos_cur_sel   : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);
-    o_prot_cur       : out std_logic_vector(PROT_CUR_LEN-1 downto 0)
+    o_nmos_trst_sel_n : out std_logic;
+    o_nmos_ctrl_sel   : out std_logic;
+    o_nmos_soff_sel   : out std_logic;
+    o_nmos_cur_sel    : out std_logic_vector(NMOS_CUR_LEN-1 downto 0);
+    o_prot_cur        : out std_logic_vector(PROT_CUR_LEN-1 downto 0)
   );
 end component nmos_ls_pdrv;
 

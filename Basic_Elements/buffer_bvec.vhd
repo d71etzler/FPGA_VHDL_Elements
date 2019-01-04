@@ -33,7 +33,7 @@ entity buffer_bvec is
     -- Input ports -------------------------------------------------------------
     i_sys  : in  sys_ctrl_t;                        -- System control
     i_clr  : in  std_logic;                         -- Buffer clear
-    i_set  : in  std_logic;                         -- Buffer set
+    i_tck  : in  std_logic;                         -- Buffer tick
     i_bvec : in  std_logic_vector(LEN-1 downto 0);  -- Unbuffered bit vector
     -- Output ports ------------------------------------------------------------
     o_bvec : out std_logic_vector(LEN-1 downto 0)   -- Buffered bit vector
@@ -93,7 +93,7 @@ end process;
 
 -- Next-state logic ------------------------------------------------------------
 proc_next_state:
-process(buf_reg, i_sys.ena, i_sys.clr, i_clr, i_set, i_bvec)
+process(buf_reg, i_sys.ena, i_sys.clr, i_clr, i_tck, i_bvec)
 begin
   buf_next <= buf_reg;
   if (i_sys.ena = '1') then
@@ -102,7 +102,7 @@ begin
     else
       if (i_clr = '1') then
         buf_next <= INIT;
-      elsif (i_set = '1') then
+      elsif (i_tck = '1') then
         buf_next <= i_bvec;
       end if;
     end if;

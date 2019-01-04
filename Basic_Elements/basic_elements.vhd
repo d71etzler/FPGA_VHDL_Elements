@@ -41,6 +41,12 @@ type cnt_dir_t is (
   DOWN  -- Downwards counting
 );
 
+-- Enumerated shift direction --------------------------------------------------
+type shift_dir_t is (
+  LSHIFT,   -- Left shifting  (MSB <= LSB)
+  RSHIFT    -- Right shifting (MSB => LSB)
+);
+
 -- Enumerated signal edge direction --------------------------------------------
 type edge_dir_t is (
   RISE,   -- Rising edge
@@ -89,7 +95,7 @@ component buffer_bit is
     -- Input ports -------------------------------------------------------------
     i_sys : in  sys_ctrl_t;
     i_clr : in  std_logic;
-    i_set : in  std_logic;
+    i_tck : in  std_logic;
     i_bit : in  std_logic;
     -- Output ports ------------------------------------------------------------
     o_bit : out std_logic
@@ -106,7 +112,7 @@ component buffer_bvec is
     -- Input ports -------------------------------------------------------------
     i_sys  : in  sys_ctrl_t;
     i_clr  : in  std_logic;
-    i_set  : in  std_logic;
+    i_tck  : in  std_logic;
     i_bvec : in  std_logic_vector(LEN-1 downto 0);
     -- Output ports ------------------------------------------------------------
     o_bvec : out std_logic_vector(LEN-1 downto 0)
@@ -230,6 +236,27 @@ component count_ring_n is
     o_cnt : out std_logic_vector(N-1 downto 0)
   );
 end component count_ring_n;
+
+-- Shift register --------------------------------------------------------------
+component shift_reg is
+  generic (
+    LEN   : natural;
+    INIT  : std_logic_vector;
+    DIR   : shift_dir_t
+  );
+  port (
+    -- Input ports -------------------------------------------------------------
+    i_sys : in  sys_ctrl_t;
+    i_clr : in  std_logic;
+    i_set : in  std_logic;
+    i_tck : in  std_logic;
+    i_ssd : in  std_logic;
+    i_psd : in  std_logic_vector(LEN-1 downto 0);
+    -- Output ports ------------------------------------------------------------
+    o_ssd : out std_logic;
+    o_psd : out std_logic_vector(LEN-1 downto 0)
+  );
+end component shift_reg;
 
 -- Pulse widening --------------------------------------------------------------
 component widen_pulse is

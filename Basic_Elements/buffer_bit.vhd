@@ -32,7 +32,7 @@ entity buffer_bit is
     -- Input ports -------------------------------------------------------------
     i_sys : in  sys_ctrl_t;   -- System block control
     i_clr : in  std_logic;    -- Buffer clear
-    i_set : in  std_logic;    -- Buffer set
+    i_tck : in  std_logic;    -- Buffer tick
     i_bit : in  std_logic;    -- Unbuffered bit
     -- Output ports ------------------------------------------------------------
     o_bit : out std_logic     -- Buffered bit
@@ -92,7 +92,7 @@ end process;
 
 -- Next-state logic ------------------------------------------------------------
 proc_next_state:
-process(buf_reg, i_sys.ena, i_sys.clr, i_clr, i_set, i_bit)
+process(buf_reg, i_sys.ena, i_sys.clr, i_clr, i_tck, i_bit)
 begin
   buf_next <= buf_reg;
   if (i_sys.ena = '1') then
@@ -101,7 +101,7 @@ begin
     else
       if (i_clr = '1') then
         buf_next <= INIT;
-      elsif (i_set = '1') then
+      elsif (i_tck = '1') then
         buf_next <= i_bit;
       end if;
     end if;

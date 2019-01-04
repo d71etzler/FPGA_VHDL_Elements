@@ -18,10 +18,11 @@
 library ieee;
   use ieee.numeric_std.all;
   use ieee.std_logic_1164.all;
-library math;
-  use math.math_functions.all;
 library basic;
   use basic.basic_elements.all;
+library math;
+  use math.math_functions.all;
+
 
 --------------------------------------------------------------------------------
 -- ENTITY definition

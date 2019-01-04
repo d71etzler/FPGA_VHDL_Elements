@@ -63,10 +63,16 @@ end entity spi_slave;
 --------------------------------------------------------------------------------
 architecture structural of spi_slave is
   -- Constants -----------------------------------------------------------------
-  constant C_SPI_SLAVE_GUARD_LEN   : natural   := 1;                              -- SPI IO synchronization guard length
-  constant C_SPI_SLAVE_CSEL_N_INIT : std_logic := '1';                            -- SPI chip select (low-active) initial value
-  constant C_SPI_SLAVE_SCLK_INIT   : std_logic := set_sclk_level(SPI_CTRL_MODE);  -- SPI clock initial value
-  constant C_SPI_SLAVE_SDI_INIT    : std_logic := '0';                            -- Serial input data initial value
+  constant C_SPI_SLAVE_GUARD_LEN      : natural                                  := 1;                                                  -- SPI IO synchronization guard length
+  constant C_SPI_SLAVE_CSEL_N_INIT    : std_logic                                := '1';                                                -- SPI chip select (low-active) initial value
+  constant C_SPI_SLAVE_SCLK_INIT      : std_logic                                := set_sclk_level(SPI_CTRL_MODE);                      -- SPI clock initial value
+  constant C_SPI_SLAVE_SDI_INIT       : std_logic                                := '0';                                                -- Serial input data initial value
+  constant C_SPI_SLAVE_SPI_SHIFT_INIT : std_logic_vector(SPI_MSG_LEN-1 downto 0) := (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_SHIFT_INIT);    -- SPI shift register initial value
+  constant C_SPI_SLAVE_SPI_FRM_INIT   : std_logic_vector(SPI_MSG_LEN-1 downto 0) := (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_FRM_INIT);      -- SPI frame initial value
+  constant C_SPI_SLAVE_SPI_MSG_INIT   : std_logic_vector(SPI_MSG_LEN-1 downto 0) := (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_MSG_INIT);      -- SPI message initial value
+  constant C_SPI_SLAVE_SPI_ERR_SCLK   : std_logic_vector(SPI_MSG_LEN-1 downto 0) := (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_ERR_SCLK);      -- SPI clock error message
+  constant C_SPI_SLAVE_SPI_ERR_CRC    : std_logic_vector(SPI_MSG_LEN-1 downto 0) := (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_ERR_CRC);       -- SPI CRC error message
+  constant C_SPI_SLAVE_SPI_ERR_OVRN   : std_logic_vector(SPI_MSG_LEN-1 downto 0) := (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_ERR_OVRN);      -- SPI overrun error message
   -- Types ---------------------------------------------------------------------
   -- (none)
   -- Aliases -------------------------------------------------------------------
@@ -130,12 +136,12 @@ spi_engine_unit: spi_engine
     SPI_CTRL_MODE  => SPI_CTRL_MODE,
     SPI_SHIFT_DIR  => SPI_SHIFT_DIR,
     SPI_CRC_POLY   => SPI_CRC_POLY,
-    SPI_SHIFT_INIT => (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_SHIFT_INIT),
-    SPI_FRM_INIT   => (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_FRM_INIT),
-    SPI_MSG_INIT   => (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_MSG_INIT),
-    SPI_ERR_SCLK   => (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_ERR_SCLK),
-    SPI_ERR_CRC    => (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_ERR_CRC),
-    SPI_ERR_OVRN   => (SPI_STAT_CMD & SPI_STAT_ADDR & SPI_ERR_OVRN)
+    SPI_SHIFT_INIT => C_SPI_SLAVE_SPI_SHIFT_INIT,
+    SPI_FRM_INIT   => C_SPI_SLAVE_SPI_FRM_INIT,
+    SPI_MSG_INIT   => C_SPI_SLAVE_SPI_MSG_INIT,
+    SPI_ERR_SCLK   => C_SPI_SLAVE_SPI_ERR_SCLK,
+    SPI_ERR_CRC    => C_SPI_SLAVE_SPI_ERR_CRC,
+    SPI_ERR_OVRN   => C_SPI_SLAVE_SPI_ERR_OVRN
   )
   port map (
     -- Input ports -------------------------------------------------------------

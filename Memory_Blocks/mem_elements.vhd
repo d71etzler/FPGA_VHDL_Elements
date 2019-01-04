@@ -50,6 +50,12 @@ type reg_op_t is (
   WR_AND_DATA_RD_CLEAR_DATA   -- AND new data during write; clear data during read
 );
 
+-- Register operation bitwise type ---------------------------------------------
+type reg_opb_t is (
+  WR_BIT_DATA_RD_NO_CHANGE,   -- Set data bitwise during write; no change during read
+  WR_BIT_DATA_RD_CLEAR_DATA   -- Set data bitwise during write; clear data during read
+);
+
 --------------------------------------------------------------------------------
 -- Function declarations
 --------------------------------------------------------------------------------
@@ -62,21 +68,43 @@ type reg_op_t is (
 -- Register line ---------------------------------------------------------------
 component reg_line is
   generic (
-    REG_WIDTH : natural;
-    REG_INIT  : std_logic_vector;
-    REG_OPC   : reg_op_t
+    REG_WIDTH    : natural;
+    REG_INIT     : std_logic_vector;
+    REG_OPC      : reg_op_t
   );
   port (
     -- Input ports -------------------------------------------------------------
-    i_sys     : in  sys_ctrl_t;
-    i_ena     : in  std_logic;
-    i_wr      : in  std_logic;
-    i_accs_s  : in  std_logic;
-    i_data    : in  std_logic_vector(REG_WIDTH-1 downto 0);
+    i_sys        : in  sys_ctrl_t;
+    i_ena        : in  std_logic;
+    i_wr         : in  std_logic;
+    i_accs_s     : in  std_logic;
+    i_data       : in  std_logic_vector(REG_WIDTH-1 downto 0);
     -- Output ports ------------------------------------------------------------
-    o_data    : out std_logic_vector(REG_WIDTH-1 downto 0)
+    o_data_rd    : out std_logic_vector(REG_WIDTH-1 downto 0);
+    o_data_xchng : out std_logic_vector(REG_WIDTH-1 downto 0)
   );
 end component reg_line;
+
+-- Register line (bitwise set and clear) ---------------------------------------
+component reg_line_bset is
+  generic (
+    REG_WIDTH    : natural;
+    REG_INIT     : std_logic_vector;
+    REG_OPCB     : reg_opb_t
+  );
+  port (
+    -- Input ports -------------------------------------------------------------
+    i_sys        : in  sys_ctrl_t;
+    i_ena        : in  std_logic;
+    i_wr         : in  std_logic;
+    i_set_clr    : in  std_logic;
+    i_accs_s     : in  std_logic;
+    i_data       : in  std_logic_vector(REG_WIDTH-1 downto 0);
+    -- Output ports ------------------------------------------------------------
+    o_data_rd    : out std_logic_vector(REG_WIDTH-1 downto 0);
+    o_data_xchng : out std_logic_vector(REG_WIDTH-1 downto 0)
+  );
+end component reg_line_bset;
 
 -- ROM block -------------------------------------------------------------------
 component rom_block is

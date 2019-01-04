@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- File: spi_frame_build.vhd
+-- File: spi_frm_bld_2clkd.vhd
 --
 -- !THIS FILE IS UNDER REVISION CONTROL!
 --
@@ -8,8 +8,7 @@
 -- $Rev:: 44           $: Revision of last commit
 --
 -- Open Points/Remarks:
---  + CRC transprose and complement fucntionality to be included based on
---    a generics (e.g. SPI_CRC_MODE : spi_crc_mode_t := 0)
+--  + (none)
 --
 --------------------------------------------------------------------------------
 
@@ -21,49 +20,52 @@ library ieee;
   use ieee.std_logic_1164.all;
 library basic;
   use basic.basic_elements.all;
-library math;
-  use math.crc_functions.all;
-library spi;
-  use spi.spi_elements.all;
+library spi_2clkd;
+  use spi_2clkd.spi_elements_2clkd.all;
 
 --------------------------------------------------------------------------------
 -- ENTITY definition
 --------------------------------------------------------------------------------
-entity spi_frame_build is
+entity spi_frm_bld_2clkd is
   generic (
-    SPI_FRM_LEN  : natural          := 8;                         -- SPI frame length (number of bits)
-    SPI_MSG_LEN  : natural          := 6;                         -- SPI message length (number of bits)
-    SPI_CRC_POLY : std_logic_vector := b"01";                     -- SPI CRC polynom (without leading '1')
-    SPI_FRM_INIT : std_logic_vector := b"11_1111";                -- SPI frame buffer initial string
-    SPI_ERR_OVRN : std_logic_vector := b"11_0111"                 -- SPI message overrun error string
+    SPI_FRM_LEN      : natural          := 8;                         -- SPI frame length (number of bits)
+    SPI_PAR_VAR      : spi_parity_var_t := ODD;                       -- SPI parity variant
+    SPI_MDO_INIT     : std_logic_vector := b"111_1111";               -- SPI message buffer initial string
+    SPI_ERR_OVRN     : std_logic_vector := b"111_1011"                -- SPI message overrun error string
   );
   port (
     -- Input ports -------------------------------------------------------------
-    i_sys        : in  sys_ctrl_t;                                -- System control
-    i_shift_mode : in  spi_shift_mode_t;                          -- SPI shift register mode
-    i_mdo_load_s : in  std_logic;                                 -- Parallel output message data load
-    i_mdo        : in  std_logic_vector(SPI_MSG_LEN-1 downto 0);  -- Parallel output message data
+    i_sys            : in  sys_ctrl_t;                                -- System control
+    i_csel           : in  std_logic;                                 -- SPI chip select (synchronized to SDI clock domain)
+    i_csel_rise      : in  std_logic;                                 -- SPI chip select rising edge (synchronized to SDI clock domain)
+    i_sclk_cnt       : in  std_logic;                                 -- SPI clock edge contern (synchronized to SDI domain)
+    i_mdo_load_s     : in  std_logic;                                 -- Parallel output message data load strobe
+    i_mdo            : in  std_logic_vector(SPI_FRM_LEN-2 downto 0);  -- Parallel output message data
+    i_sclk_cnt_2clkd : in  std_logic;                                 -- SPI clock edge counter (2nd clock domain)
     -- Output ports ------------------------------------------------------------
-    o_pdo        : out std_logic_vector(SPI_FRM_LEN-1 downto 0)   -- Parallel output frame data
+    o_pdo_load       : out std_logic;                                 -- Parallel output frame data load
+    o_pdo            : out std_logic_vector(SPI_FRM_LEN-1 downto 0)   -- Parallel output frame data
   );
-end entity spi_frame_build;
+end entity spi_frm_bld_2clkd;
 
 --------------------------------------------------------------------------------
 -- ARCHITECTURE definition
 --------------------------------------------------------------------------------
-architecture rtl of spi_frame_build is
+architecture rtl of spi_frm_bld_2clkd is
   -- Constants -----------------------------------------------------------------
-  constant C_SPI_FRAME_BUILD_PDO_INIT : std_logic_vector(SPI_FRM_LEN-1 downto 0) := append_crc(SPI_FRM_INIT, SPI_CRC_POLY);
-  constant C_SPI_FRAME_BUILD_PDO_OVRN : std_logic_vector(SPI_FRM_LEN-1 downto 0) := append_crc(SPI_ERR_OVRN, SPI_CRC_POLY);
+  constant C_SPI_FRM_BLD_2CLKD_PDO_LOAD_INIT : std_logic                                := '0';                                                     -- Frame register data load initial value
+  constant C_SPI_FRM_BLD_2CLKD_PDO_INIT      : std_logic_vector(SPI_FRM_LEN-1 downto 0) := get_parity(SPI_MDO_INIT, SPI_PAR_VAR) & SPI_MDO_INIT;    -- Frame register data initial value
+  constant C_SPI_FRM_BLD_2CLKD_ERR_OVRN      : std_logic_vector(SPI_FRM_LEN-1 downto 0) := get_parity(SPI_ERR_OVRN, SPI_PAR_VAR) & SPI_ERR_OVRN;    -- Overrun error
   -- Types ---------------------------------------------------------------------
   -- (none)
   -- Aliases -------------------------------------------------------------------
   -- (none)
   -- Signals -------------------------------------------------------------------
-  signal pdo_reg  : std_logic_vector(SPI_FRM_LEN-1 downto 0)             := C_SPI_FRAME_BUILD_PDO_INIT;   -- Frame register current state
-  signal pdo_next : std_logic_vector(SPI_FRM_LEN-1 downto 0)             := C_SPI_FRAME_BUILD_PDO_INIT;   -- Frame register next state
-  signal pdo_sum  : std_logic_vector(SPI_FRM_LEN-1 downto 0)             := C_SPI_FRAME_BUILD_PDO_INIT;   -- Frame register summary
-  signal crc_res  : std_logic_vector(SPI_FRM_LEN-SPI_MSG_LEN-1 downto 0) := (others => '0');              -- SPI message CRC calculation result
+  signal pdo_load_reg  : std_logic                                := '0';                             -- Frame register load current state
+  signal pdo_load_next : std_logic                                := '0';                             -- Frame register load next state
+  signal pdo_reg       : std_logic_vector(SPI_FRM_LEN-1 downto 0) := C_SPI_FRM_BLD_2CLKD_PDO_INIT;    -- Frame register current state
+  signal pdo_next      : std_logic_vector(SPI_FRM_LEN-1 downto 0) := C_SPI_FRM_BLD_2CLKD_PDO_INIT;    -- Frame register next state
+  signal pdo_sum       : std_logic_vector(SPI_FRM_LEN-1 downto 0) := C_SPI_FRM_BLD_2CLKD_PDO_INIT;    -- Frame register summary
   -- Attributes ----------------------------------------------------------------
   -- KEEP_HIERARCHY is used to prevent optimizations along the hierarchy
   -- boundaries.  The Vivado synthesis tool attempts to keep the same general
@@ -91,29 +93,40 @@ architecture rtl of spi_frame_build is
   -- entity. If you need to keep specific ports, either use the
   -- -flatten_hierarchy none setting, or put a DONT_TOUCH on the module or
   -- entity itself.
-  attribute KEEP            : string;
-  attribute KEEP of pdo_reg : signal is "true";
+  attribute KEEP                 : string;
+  attribute KEEP of pdo_load_reg : signal is "true";
+  attribute KEEP of pdo_reg      : signal is "true";
 begin
 
 -- Assertions ------------------------------------------------------------------
---assert SPI_FRM_LEN > SPI_MSG_LEN
---  report "SPI_FRM_LEN <= SPI_MSG_LEN!  The SPI frame must be longer than the SPI message."
---  severity failure;
---assert (SPI_FRM_LEN-SPI_MSG_LEN) = SPI_CRC_POLY'length
---  report "SPI_FRM_LEN-SPI_MSG_LEN != LENGTH(SPI_CRC_POLY)!  Incorrect length of CRC polynom."
---  severity failure;
+-- (none)
 
 --------------------------------------------------------------------------------
 -- SPI frame build
 --------------------------------------------------------------------------------
 
 -- Registers -------------------------------------------------------------------
-proc_register:
+
+-- Frame register data load
+proc_register_pdo_load:
 process(i_sys.clk)
 begin
   if (rising_edge(i_sys.clk)) then
     if (i_sys.rst = '1') then
-      pdo_reg <= C_SPI_FRAME_BUILD_PDO_INIT;
+      pdo_load_reg <= C_SPI_FRM_BLD_2CLKD_PDO_LOAD_INIT;
+    else
+      pdo_load_reg <= pdo_load_next;
+    end if;
+  end if;
+end process;
+
+-- Frame register data
+proc_register_pdo:
+process(i_sys.clk)
+begin
+  if (rising_edge(i_sys.clk)) then
+    if (i_sys.rst = '1') then
+      pdo_reg <= C_SPI_FRM_BLD_2CLKD_PDO_INIT;
     else
       pdo_reg <= pdo_next;
     end if;
@@ -122,25 +135,38 @@ end process;
 
 -- Input logic -----------------------------------------------------------------
 
--- SPI message CRC calculation result
-proc_in_crc_res:
-crc_res <= build_crc(i_mdo, SPI_CRC_POLY);
-
 -- Frame register summary
 proc_in_pdo_sum:
---pdo_sum <= i_mdo & crc_res;
-pdo_sum <= crc_res & i_mdo;
+pdo_sum <= get_parity(i_mdo, SPI_PAR_VAR) & i_mdo;
 
 -- Next-state logic ------------------------------------------------------------
-proc_next_state:
-process(pdo_reg, i_sys.ena, i_sys.clr, i_shift_mode, i_mdo_load_s, pdo_sum)
+
+-- Frame register data load
+proc_next_state_pdo_load:
+process(pdo_load_reg, i_sys.ena, i_sys.clr, i_csel_rise, i_sclk_cnt)
+begin
+  pdo_load_next <= pdo_load_reg;
+  if (i_sys.ena = '1') then
+    if(i_sys.clr = '1') then
+      pdo_load_next <= C_SPI_FRM_BLD_2CLKD_PDO_LOAD_INIT;
+    elsif (i_csel_rise = '1') then
+      pdo_load_next <= '1';
+    elsif (i_sclk_cnt = '1') then
+      pdo_load_next <= '0';
+    end if;
+  end if;
+end process;
+
+-- Frame register data
+proc_next_state_pdo:
+process(pdo_reg, i_sys.ena, i_sys.clr, i_csel, i_sclk_cnt, i_mdo_load_s, pdo_sum)
 begin
   pdo_next <= pdo_reg;
   if (i_sys.ena = '1') then
     if (i_sys.clr = '1') then
-      pdo_next <= C_SPI_FRAME_BUILD_PDO_INIT;
-    elsif not(i_shift_mode = NONE) then
-      pdo_next <= C_SPI_FRAME_BUILD_PDO_OVRN;
+      pdo_next <= C_SPI_FRM_BLD_2CLKD_PDO_INIT;
+    elsif (i_csel = '1') and (i_sclk_cnt = '1') then
+      pdo_next <= C_SPI_FRM_BLD_2CLKD_ERR_OVRN;
     elsif (i_mdo_load_s = '1') then
       pdo_next <= pdo_sum;
     end if;
@@ -148,6 +174,13 @@ begin
 end process;
 
 -- Output logic ----------------------------------------------------------------
+
+-- Frame register data load
+proc_out_o_pdo_load:
+o_pdo_load <= '1' when (pdo_load_reg = '1') and (i_sclk_cnt_2clkd = '0')
+         else '0';
+
+-- Frame register data
 proc_out_o_pdo:
 o_pdo <= pdo_reg;
 

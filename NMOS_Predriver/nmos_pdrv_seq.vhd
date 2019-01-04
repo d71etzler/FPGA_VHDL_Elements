@@ -28,12 +28,14 @@ entity nmos_pdrv_seq is
   port (
     -- Input ports -------------------------------------------------------------
     i_sys           : in  sys_ctrl_t;   -- System control
+    i_ovld          : in  std_logic;    -- Output overload control
     i_ctrl          : in  std_logic;    -- Pre-driver control
     i_diag          : in  std_logic;    -- Diagnostics control
     i_prot_set      : in  std_logic;    -- Protection disable set
     i_prot_clr      : in  std_logic;    -- Protection disable clear
     i_tsoff_cnt_ovr : in  std_logic;    -- Strong OFF-path delay counter overflow
     -- Output ports ------------------------------------------------------------
+    o_trst_n        : out std_logic;    -- Tri-state control (negated)
     o_ctrl          : out std_logic;    -- NMOS switch control
     o_soff          : out std_logic;    -- Strong OFF-path control
     o_tsoff_cnt_clr : out std_logic;    -- Strong OFF-path delay counter clear
@@ -49,17 +51,18 @@ architecture rtl of nmos_pdrv_seq is
   constant C_NMOS_PDRV_SEQ_SOFF_CTRL_ZERO_DELAY : boolean := FALSE;   -- Zero additional clock cycles for strong OFF-path activation
   -- Types ---------------------------------------------------------------------
   type ctrl_state_t is (    -- Control state-machine type
-    IDLE,         -- Idle state (wating for activation)
+    TRI_STATE,    -- Tri-state state
+    IDLE,         -- Idle state (waiting for activation)
     ACTIVATED,    -- Activated state
-    POST_CNT,     -- Post activation count state
     DIAGNOSTICS,  -- Diagnostics state
+    POST_CNT,     -- Post activation count state
     PROTECTION    -- Protection event state
   );
   -- Aliases -------------------------------------------------------------------
   -- (none)
   -- Signals -------------------------------------------------------------------
-  signal state_reg  : ctrl_state_t := IDLE;     -- State-machine current state
-  signal state_next : ctrl_state_t := IDLE;     -- State-machine next state
+  signal state_reg  : ctrl_state_t := TRI_STATE;    -- State-machine current state
+  signal state_next : ctrl_state_t := TRI_STATE;    -- State-machine next state
   -- Attributes ----------------------------------------------------------------
   -- KEEP_HIERARCHY is used to prevent optimizations along the hierarchy
   -- boundaries.  The Vivado synthesis tool attempts to keep the same general
@@ -119,7 +122,7 @@ process(i_sys.clk)
 begin
   if (rising_edge(i_sys.clk)) then
     if (i_sys.rst = '1') then
-      state_reg <= IDLE;
+      state_reg <= TRI_STATE;
     else
       state_reg <= state_next;
     end if;
@@ -131,7 +134,7 @@ end process;
 
 -- Next-state logic ------------------------------------------------------------
 proc_next_state:
-process(state_reg, i_sys.ena, i_sys.clr, i_ctrl, i_diag, i_prot_set, i_prot_clr, i_tsoff_cnt_ovr)
+process(state_reg, i_sys.ena, i_sys.clr, i_ovld, i_ctrl, i_diag, i_prot_set, i_prot_clr, i_tsoff_cnt_ovr)
 begin
   state_next <= state_reg;
   if (i_sys.ena = '1') then
@@ -139,9 +142,16 @@ begin
       state_next <= IDLE;
     else
       case state_reg is
+        -- STATE: TRI_STATE ----------------------------------------------------
+        when TRI_STATE =>
+          if (i_ovld = '0') then
+            state_next <= IDLE;
+          end if;
         -- STATE: IDLE ---------------------------------------------------------
         when IDLE =>
-          if (i_prot_set = '1') then
+          if (i_ovld = '1') then
+            state_next <= TRI_STATE;
+          elsif (i_prot_set = '1') then
             state_next <= PROTECTION;
           elsif (i_ctrl = '1') then
             state_next <= ACTIVATED;
@@ -150,30 +160,38 @@ begin
           end if;
         -- STATE: ACTIVATED ----------------------------------------------------
         when ACTIVATED =>
-          if (i_prot_set = '1') then
+          if (i_ovld = '1') then
+            state_next <= TRI_STATE;
+          elsif (i_prot_set = '1') then
             state_next <= PROTECTION;
           elsif (i_ctrl = '0') then
             state_next <= POST_CNT;
           end if;
+        -- STATE: DIAGNOSTICS --------------------------------------------------
+        when DIAGNOSTICS =>
+          if (i_ovld = '1') then
+            state_next <= TRI_STATE;
+          elsif (i_prot_set = '1') then
+            state_next <= PROTECTION;
+          elsif (i_diag = '0') then
+            state_next <= POST_CNT;
+          end if;
         -- STATE: POST_CNT -----------------------------------------------------
         when POST_CNT =>
-          if (i_prot_set = '1') then
+          if (i_ovld = '1') then
+            state_next <= TRI_STATE;
+          elsif (i_prot_set = '1') then
             state_next <= PROTECTION;
           elsif (i_ctrl = '1') then
             state_next <= ACTIVATED;
           elsif (i_tsoff_cnt_ovr = '1') then
             state_next <= IDLE;
           end if;
-        -- STATE: DIAGNOSTICS --------------------------------------------------
-        when DIAGNOSTICS =>
-          if (i_prot_set = '1') then
-            state_next <= PROTECTION;
-          elsif (i_diag = '0') then
-            state_next <= IDLE;
-          end if;
         -- STATE: PROTECTION ---------------------------------------------------
         when PROTECTION =>
-          if (i_prot_set = '0') and (i_prot_clr = '1') then
+          if (i_ovld = '1') then
+            state_next <= TRI_STATE;
+          elsif (i_prot_set = '0') and (i_prot_clr = '1') then
             state_next <= IDLE;
           end if;
       end case;
@@ -192,6 +210,11 @@ o_tsoff_cnt_clr <= '0' when (state_reg = POST_CNT)
 proc_out_o_tsoff_cnt_tck:
 o_tsoff_cnt_tck <= '1' when (state_reg = POST_CNT)
               else '0';
+
+-- Tri-state control
+proc_out_o_trst_n:
+o_trst_n <= '1' when (state_reg = TRI_STATE)
+       else '0';
 
 -- NMOS switch control
 proc_out_o_ctrl:

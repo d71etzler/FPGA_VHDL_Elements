@@ -73,34 +73,34 @@ architecture rtl of spi_ctrl_seq is
   -- attribute can only be set in the RTL.
   attribute KEEP_HIERARCHY        : string;
   attribute KEEP_HIERARCHY of rtl : architecture is "yes";
-  -- FSM_ENCODING controls encoding on the state machine.  Typically, the Vivado 
+  -- FSM_ENCODING controls encoding on the state machine.  Typically, the Vivado
   -- tools choose an encoding protocol for state machines based on heuristics that
-  -- do the best for the most designs.  Certain design types work better with a 
+  -- do the best for the most designs.  Certain design types work better with a
   -- specific encoding protocol.
-  -- FSM_ENCODING can be placed on the state machine registers.  The legal values 
-  -- for this are "one_hot", "sequential", "johnson", "gray", "auto", and "none". 
-  -- The "auto" value is the default, and allows the tool to determine best 
+  -- FSM_ENCODING can be placed on the state machine registers.  The legal values
+  -- for this are "one_hot", "sequential", "johnson", "gray", "auto", and "none".
+  -- The "auto" value is the default, and allows the tool to determine best
   -- encoding.  This attribute can be set in the RTL or the XDC.
   attribute FSM_ENCODING : string;
   attribute FSM_ENCODING of state_reg : signal is "gray";
-  -- FSM_SAFE_STATE instructs Vivado synthesis to insert logic into the state 
-  -- machine that detects there is an illegal state, then puts it into a known, 
+  -- FSM_SAFE_STATE instructs Vivado synthesis to insert logic into the state
+  -- machine that detects there is an illegal state, then puts it into a known,
   -- good state on the next clock cycle.
-  -- For example, if there were a state machine with a "one_hot" encode, and that 
-  -- is in a "0101" state (which is an illegal for "one_hot"), the state machine 
-  -- would be able to recover.  Place the FSM_SAFE_STATE attribute on the state 
-  -- machine registers.  You can set this attribute in either the RTL or in the 
+  -- For example, if there were a state machine with a "one_hot" encode, and that
+  -- is in a "0101" state (which is an illegal for "one_hot"), the state machine
+  -- would be able to recover.  Place the FSM_SAFE_STATE attribute on the state
+  -- machine registers.  You can set this attribute in either the RTL or in the
   -- XDC.
   -- The legal values for FSM_SAFE_STATE are:
   -- • "auto": Uses Hamming-3 encoding for auto-correction for one bit/flip.
-  -- • "reset_state": Forces the state machine into the reset state using 
+  -- • "reset_state": Forces the state machine into the reset state using
   --   Hamming-2 encoding detection for one bit/flip.
   -- • "power_on_state": Forces the state machine into the power-on state using
   --   Hamming-2 encoding detection for one bit/flip.
-  -- • "default_state": Forces the state machine into the default state specified 
-  --   in RTL: the state that is specified in "default" branch of the case 
-  --   statement in Verilog or the state specified in the others branch of the 
-  --   case statement in VHDL; even if that state is unreachable, using Hamming-2 
+  -- • "default_state": Forces the state machine into the default state specified
+  --   in RTL: the state that is specified in "default" branch of the case
+  --   statement in Verilog or the state specified in the others branch of the
+  --   case statement in VHDL; even if that state is unreachable, using Hamming-2
   --   encoding detection for one bit/flip.
   attribute FSM_SAFE_STATE : string;
   attribute FSM_SAFE_STATE of state_reg : signal is "reset_state";
@@ -133,18 +133,18 @@ proc_in_sclk_edges:
 sclk_edges <= i_sclk_edges(RISE) or i_sclk_edges(FALL);
 
 -- GENERATE BLOCK: SPI mode 0 (CPOL = 0, CPHA = 0) or SPI mode 3 (CPOL = 1, CPHA = 1)
--- For CPOL = 0 the base value of the clock is zero, i.e. the active state is 1 
--- and idle state is 0.  With CPHA = 0, data are captured on the clock's rising 
--- edge (clock transition low => high) and data is output on a falling edge 
+-- For CPOL = 0 the base value of the clock is zero, i.e. the active state is 1
+-- and idle state is 0.  With CPHA = 0, data are captured on the clock's rising
+-- edge (clock transition low => high) and data is output on a falling edge
 -- (clock transition high => low).
 --
--- For CPOL = 1 the base value of the clock is one (inversion of CPOL = 0), i.e. 
--- the active state is 0 and idle state is 1.  With CPHA = 1, data are captured 
+-- For CPOL = 1 the base value of the clock is one (inversion of CPOL = 0), i.e.
+-- the active state is 0 and idle state is 1.  With CPHA = 1, data are captured
 -- on clock's rising edge and data is output on a falling edge.
 --
--- (That is, CPHA = 0 means sampling on the first clock edge, while CPHA = 1 means 
--- sampling on the second clock edge, regardless of whether that clock edge is 
--- rising or falling.  Note that with CPHA = 0, the data must be stable for a 
+-- (That is, CPHA = 0 means sampling on the first clock edge, while CPHA = 1 means
+-- sampling on the second clock edge, regardless of whether that clock edge is
+-- rising or falling.  Note that with CPHA = 0, the data must be stable for a
 -- half cycle before the first clock cycle.)
 gen_in_spi_mode03:
 if ((SPI_CTRL_MODE = CPOL0_CPHA0) or (SPI_CTRL_MODE = CPOL1_CPHA1)) generate
@@ -153,17 +153,17 @@ if ((SPI_CTRL_MODE = CPOL0_CPHA0) or (SPI_CTRL_MODE = CPOL1_CPHA1)) generate
 end generate;
 
 -- GENERATE BLOCK: SPI mode 1 (CPOL = 0, CPHA = 1) or SPI mode 2 (CPOL = 1, CPHA = 0)
--- For CPOL = 1 the base value of the clock is one (inversion of CPOL = 0), i.e. 
--- the active state is 0 and idle state is 1.  With CPHA = 0, data are captured 
+-- For CPOL = 1 the base value of the clock is one (inversion of CPOL = 0), i.e.
+-- the active state is 0 and idle state is 1.  With CPHA = 0, data are captured
 -- on clock's falling edge and data is output on a rising edge.
 --
--- For CPOL = 0 the base value of the clock is zero, i.e. the active state is 1 
--- and idle state is 0.  With CPHA = 1, data are captured on the clock's falling 
+-- For CPOL = 0 the base value of the clock is zero, i.e. the active state is 1
+-- and idle state is 0.  With CPHA = 1, data are captured on the clock's falling
 -- edge and data is output on a rising edge.
 --
--- (That is, CPHA = 0 means sampling on the first clock edge, while CPHA = 1 means 
--- sampling on the second clock edge, regardless of whether that clock edge is 
--- rising or falling.  Note that with CPHA = 0, the data must be stable for a 
+-- (That is, CPHA = 0 means sampling on the first clock edge, while CPHA = 1 means
+-- sampling on the second clock edge, regardless of whether that clock edge is
+-- rising or falling.  Note that with CPHA = 0, the data must be stable for a
 -- half cycle before the first clock cycle.)
 gen_in_spi_mode12:
 if ((SPI_CTRL_MODE = CPOL1_CPHA0) or (SPI_CTRL_MODE = CPOL0_CPHA1)) generate

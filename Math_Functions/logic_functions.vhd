@@ -366,7 +366,7 @@ begin
   -- Assertions ----------------------------------------------------------------
   -- (none)
   -- Leftmost stage ------------------------------------------------------------
-    stages(C_STAGE_NUM,0) := '1';
+  stages(C_STAGE_NUM,0) := '1';
   -- Middle stages -------------------------------------------------------------
   for i in (C_STAGE_NUM) downto 1 loop
     for j in 0 to ((2**(C_STAGE_NUM-i))-1) loop

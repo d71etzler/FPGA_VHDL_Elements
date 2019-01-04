@@ -8,7 +8,7 @@
 -- $Rev:: 11           $: Revision of last commit
 --
 -- Open Points/Remarks:
---  + (none)
+--  + SPI message counter to be implemented
 --
 --------------------------------------------------------------------------------
 

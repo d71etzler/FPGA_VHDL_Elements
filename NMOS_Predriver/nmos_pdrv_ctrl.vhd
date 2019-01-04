@@ -34,6 +34,7 @@ entity nmos_pdrv_ctrl is
   port (
     -- Input ports -------------------------------------------------------------
     i_sys      : in  sys_ctrl_t;                              -- System control
+    i_ovld     : in  std_logic;                               -- Output over-load control
     i_ctrl     : in  std_logic;                               -- Pre-driver control
     i_diag     : in  std_logic;                               -- Diagnostics control
     i_prot_set : in  std_logic;                               -- Protection disable set
@@ -41,6 +42,7 @@ entity nmos_pdrv_ctrl is
     i_cur      : in  std_logic_vector(CUR_LEN-1 downto 0);    -- NMOS charge/discharge current selection
     i_tsoff    : in  std_logic_vector(TSOFF_LEN-1 downto 0);  -- Strong OFF-path delay compare value
     -- Output ports ------------------------------------------------------------
+    o_trst_n   : out std_logic;                               -- Tri-state control (negated)
     o_ctrl     : out std_logic;                               -- NMOS switch control
     o_soff     : out std_logic;                               -- Strong OFF-path control
     o_cur      : out std_logic_vector(CUR_LEN-1 downto 0)     -- NMOS charge/discharge current selection
@@ -103,12 +105,14 @@ nmos_pdrv_ctrl_seq_unit: nmos_pdrv_seq
   port map (
     -- Input ports -------------------------------------------------------------
     i_sys           => i_sys,
+    i_ovld          => i_ovld,
     i_ctrl          => i_ctrl,
     i_diag          => i_diag,
     i_prot_set      => i_prot_set,
     i_prot_clr      => i_prot_clr,
     i_tsoff_cnt_ovr => tsoff_cnt_ovr,
     -- Output ports ------------------------------------------------------------
+    o_trst_n        => o_trst_n,
     o_ctrl          => o_ctrl,
     o_soff          => o_soff,
     o_tsoff_cnt_clr => tsoff_cnt_clr,

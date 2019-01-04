@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
--- File: reg_line.vhd
+-- File: reg_line_bset.vhd
 --
 -- !THIS FILE IS UNDER REVISION CONTROL!
 --
@@ -26,29 +26,30 @@ library mem;
 --------------------------------------------------------------------------------
 -- ENTITY definition
 --------------------------------------------------------------------------------
-entity reg_line is
+entity reg_line_bset is
   generic (
     REG_WIDTH    : natural          := 8;                           -- Register bit length
     REG_INIT     : std_logic_vector := x"00";                       -- Initial value
-    REG_OPC      : reg_op_t         := WR_NO_CHANGE_RD_NO_CHANGE    -- Register operation code
+    REG_OPCB     : reg_opb_t        := WR_BIT_DATA_RD_NO_CHANGE     -- Register operation code (bitwise)
   );
   port (
     -- Input ports -------------------------------------------------------------
     i_sys        : in  sys_ctrl_t;                                  -- System control
     i_ena        : in  std_logic;                                   -- Register enable
     i_wr         : in  std_logic;                                   -- Register write enable
+    i_set_clr    : in  std_logic;                                   -- Register bit set/clear control
     i_accs_s     : in  std_logic;                                   -- Register access (one clock cycle)
     i_data       : in  std_logic_vector(REG_WIDTH-1 downto 0);      -- Register input data
     -- Output ports ------------------------------------------------------------
     o_data_rd    : out std_logic_vector(REG_WIDTH-1 downto 0);      -- Register output read data
     o_data_xchng : out std_logic_vector(REG_WIDTH-1 downto 0)       -- Register output exchange data
   );
-end entity reg_line;
+end entity reg_line_bset;
 
 --------------------------------------------------------------------------------
 -- ARCHITECTURE definition
 --------------------------------------------------------------------------------
-architecture structural of reg_line is
+architecture structural of reg_line_bset is
   -- Constants -----------------------------------------------------------------
   -- (none)
   -- Types ---------------------------------------------------------------------
@@ -58,9 +59,9 @@ architecture structural of reg_line is
   -- Signals -------------------------------------------------------------------
   signal write_data   : std_logic_vector(REG_WIDTH-1 downto 0) := REG_INIT;   -- Data to be written to storage register
   signal store_data   : std_logic_vector(REG_WIDTH-1 downto 0) := REG_INIT;   -- Stored data
-  signal buf_data     : std_logic_vector(REG_WIDTH-1 downto 0) := REG_INIT;   -- Buffered read data
+  signal buf_data     : std_logic_vector(REG_WIDTH-1 downto 0) := REG_INIT;   -- Buffered data
   signal store_load_s : std_logic                              := '0';        -- Storage register load (one clock cycle)
-  signal buf_load_s   : std_logic                              := '0';        -- Buffer register load read (one clock cycle)
+  signal buf_load_s   : std_logic                              := '0';        -- Buffer register load (one clock cycle)
   -- Atributes -----------------------------------------------------------------
   -- KEEP_HIERARCHY is used to prevent optimizations along the hierarchy
   -- boundaries.  The Vivado synthesis tool attempts to keep the same general
@@ -102,66 +103,48 @@ begin
 
 -- Input logic -----------------------------------------------------------------
 
--- Write data multiplexer for register operation 'write no change - read no change'
-gen_write_data_wr_no_change_rd_no_change: if (REG_OPC  = WR_NO_CHANGE_RD_NO_CHANGE) generate
-  proc_in_write_data_wr_no_change_rd_no_change:
-  write_data <= store_data;
+-- Write data multiplexer for register operation 'write bitwise data - read no change'
+gen_write_data_wr_bit_data_read_no_change: if (REG_OPCB = WR_BIT_DATA_RD_NO_CHANGE) generate
+  proc_in_write_data_wr_bit_data_rd_no_change: process(i_wr, i_set_clr, i_data, store_data)
+  begin
+    if (i_wr = '1') then
+      if (i_set_clr = '0') then
+        for i in 0 to (REG_WIDTH-1) loop
+          if ((i_data(i) = '1') and (store_data(i) = '1')) then
+            write_data(i) <= not(store_data(i));
+          else
+            write_data(i) <= store_data(i);
+          end if;
+        end loop;
+      else
+        write_data <= (i_data or store_data);
+      end if;
+    else
+      write_data <= store_data;
+    end if;
+  end process;
 end generate;
 
--- Write data multiplexer for register operation 'write set data - read no change'
-gen_write_data_wr_set_data_rd_no_change: if (REG_OPC = WR_SET_DATA_RD_NO_CHANGE) generate
-  proc_in_write_data_wr_set_data_rd_no_change:
-  write_data <= i_data when (i_wr = '1')
-           else store_data;
-end generate;
-
--- Write data multiplexer for register operation 'write set data - read clear data'
-gen_write_data_wr_set_data_rd_clear_data: if (REG_OPC = WR_SET_DATA_RD_CLEAR_DATA) generate
-  proc_in_write_data_wr_set_data_rd_clear_data:
-  write_data <= i_data when (i_wr = '1')
-           else REG_INIT;
-end generate;
-
--- Write data multiplexer for register operation 'write or data - read no change'
-gen_write_data_wr_or_data_rd_no_change: if (REG_OPC = WR_OR_DATA_RD_NO_CHANGE) generate
-  proc_in_write_data_wr_or_data_rd_no_change:
-  write_data <= (i_data or store_data) when (i_wr = '1')
-           else store_data;
-end generate;
-
--- Write data multiplexer for register operation 'write or data - read clear data'
-gen_write_data_wr_or_data_rd_clear_data: if (REG_OPC = WR_OR_DATA_RD_CLEAR_DATA) generate
-  proc_in_write_data_wr_or_data_rd_clear_data:
-  write_data <= (i_data or store_data) when (i_wr = '1')
-           else REG_INIT;
-end generate;
-
--- Write data multiplexer for register operation 'write xor data - read no change'
-gen_write_data_wr_xor_data_rd_no_change: if (REG_OPC = WR_XOR_DATA_RD_NO_CHANGE) generate
-  proc_in_write_data_wr_xor_data_rd_no_change:
-  write_data <= (i_data xor store_data) when (i_wr = '1')
-           else store_data;
-end generate;
-
--- Write data multiplexer for register operation 'write xor data - read clear data'
-gen_write_data_wr_xor_data_rd_clear_data: if (REG_OPC = WR_XOR_DATA_RD_CLEAR_DATA) generate
-  proc_in_write_data_wr_xor_data_rd_clear_data:
-  write_data <= (i_data xor store_data) when (i_wr = '1')
-           else REG_INIT;
-end generate;
-
--- Write data multiplexer for register operation 'write and data - read no change'
-gen_write_data_wr_and_data_rd_no_change: if (REG_OPC = WR_AND_DATA_RD_NO_CHANGE) generate
-  proc_in_write_data_wr_and_data_rd_no_change:
-  write_data <= (i_data and store_data) when (i_wr = '1')
-           else store_data;
-end generate;
-
--- Write data multiplexer for register operation 'write and data - read clear data'
-gen_write_data_wr_and_data_rd_clear_data: if (REG_OPC = WR_AND_DATA_RD_CLEAR_DATA) generate
-  proc_in_write_data_wr_and_data_rd_clear_data:
-  write_data <= (i_data and store_data) when (i_wr = '1')
-           else REG_INIT;
+-- Write data multiplexer for register operation 'write bitwise data - read clear data'
+gen_write_data_wr_bit_data_read_clear_change: if (REG_OPCB = WR_BIT_DATA_RD_CLEAR_DATA) generate
+  proc_in_write_data_wr_bit_data_rd_clear_change: process(i_wr, i_set_clr, i_data, store_data)
+  begin
+    if (i_wr = '1') then
+      if (i_set_clr = '0') then
+        for i in 0 to (REG_WIDTH-1) loop
+          if ((i_data(i) = '1') and (store_data(i) = '1')) then
+            write_data(i) <= not(store_data(i));
+          else
+            write_data(i) <= store_data(i);
+          end if;
+        end loop;
+      else
+        write_data <= (i_data or store_data);
+      end if;
+    else
+      write_data <= REG_INIT;
+    end if;
+  end process;
 end generate;
 
 -- Storage register load
@@ -199,7 +182,7 @@ o_data_xchng <= store_data;
 -- Buffer multiplexed data
 proc_in_buf_data:
 buf_data <= i_data when (i_wr = '1')
-       else store_data;
+        else store_data;
 
 -- Buffer register load
 proc_in_buf_load_s:

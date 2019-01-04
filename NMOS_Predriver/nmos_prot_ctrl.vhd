@@ -240,7 +240,7 @@ nmos_prot_cur_mux_unit: buffer_bvec
     -- Input ports -------------------------------------------------------------
     i_sys  => i_sys,
     i_clr  => '0',
-    i_set  => cur_thr_set,
+    i_tck  => cur_thr_set,
     i_bvec => cur_thr_mux,
     -- Output ports ------------------------------------------------------------
     o_bvec => cur_thr_buf

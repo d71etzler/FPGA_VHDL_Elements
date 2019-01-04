@@ -78,7 +78,7 @@ begin
 -- (none)
 
 -- Component instantiation -----------------------------------------------------
-gen_sclk_edges_unit:
+gen_spi_sclk_edges_unit:
 for i in edge_dir_t generate
   spi_sclk_edge_unit: detect_edge
     generic map (

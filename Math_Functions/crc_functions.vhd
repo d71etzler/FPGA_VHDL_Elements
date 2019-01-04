@@ -8,7 +8,7 @@
 -- $Rev:: 4            $: Revision of last commit
 --
 -- Open Points/Remarks:
---  + (none)
+--  Configuration of CRC bit position as function parameter
 --
 --------------------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ function build_crc (
   polynom : std_logic_vector    -- CRC polynom (without leading '1')
 ) return std_logic_vector;      -- CRC remainder for building hardware
 
---- Get CRC remainder ----------------------------------------------------------
+-- Get CRC remainder -----------------------------------------------------------
 function get_crc (
   data    : std_logic_vector;   -- Input data (CRC to be applied to)
   polynom : std_logic_vector    -- CRC polynom (without leading '1')
@@ -88,7 +88,7 @@ function build_crc (
   constant C_BUILD_CRC_DATA     : std_logic_vector(C_BUILD_CRC_DATA_LEN-1 downto 0) := data;
   constant C_BUILD_CRC_POLY     : std_logic_vector(C_BUILD_CRC_POLY_LEN-1 downto 0) := polynom;
   -- Variables -----------------------------------------------------------------
-  variable crc  : std_logic_vector(C_BUILD_CRC_POLY_LEN-1 downto 0) := (others => '0');
+  variable crc  : std_logic_vector(C_BUILD_CRC_POLY_LEN-1 downto 0) := (others => '1');     -- Set to '1' for odd parity; set to '0' for even parity
   variable mask : std_logic_vector(C_BUILD_CRC_POLY_LEN-1 downto 0) := (others => '0');
   -- Assertions ----------------------------------------------------------------
   -- (none)
@@ -125,7 +125,7 @@ function get_crc (
   constant C_GET_CRC_APND_LEN : natural                                         := data'length+polynom'length;
   constant C_GET_CRC_DATA     : std_logic_vector(C_GET_CRC_DATA_LEN-1 downto 0) := data;
   constant C_GET_CRC_POLY     : std_logic_vector(C_GET_CRC_POLY_LEN-1 downto 0) := polynom;
-  constant C_GET_CRC_INIT     : std_logic_vector(C_GET_CRC_POLY_LEN-1 downto 0) := (others => '0');
+  constant C_GET_CRC_INIT     : std_logic_vector(C_GET_CRC_POLY_LEN-1 downto 0) := (others => '1');                   -- Set to '1' for odd parity; set to '0' for even parity
   constant C_GET_CRC_APND     : std_logic_vector(C_GET_CRC_APND_LEN-1 downto 0) := C_GET_CRC_DATA & C_GET_CRC_INIT;
   -- Variables -----------------------------------------------------------------
   variable flag : std_logic := '0';
@@ -170,8 +170,10 @@ function append_crc (
   -- Assertions ----------------------------------------------------------------
   -- (none)
 begin
- -- Return data appended by CRC remainder
- return (C_APPEND_CRC_DATA & get_crc(C_APPEND_CRC_DATA, C_APPEND_CRC_POLY));
+  -- Return data appended by CRC remainder at MSB position
+  return (get_crc(C_APPEND_CRC_DATA, C_APPEND_CRC_POLY) & C_APPEND_CRC_DATA);
+  -- Return data appended by CRC remainder at LSB position
+  --return (C_APPEND_CRC_DATA & get_crc(C_APPEND_CRC_DATA, C_APPEND_CRC_POLY));
 end function append_crc;
 
 end package body crc_functions;
